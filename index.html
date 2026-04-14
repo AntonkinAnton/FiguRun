@@ -4,7 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>ФИГУРА-РАНЕР</title>
+    <title>ФИГУРАНЕР</title>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JPBPKS9NPX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-JPBPKS9NPX');
+    </script>
     <style>
         * { box-sizing: border-box; }
         body { margin:0;padding:0;background:#0a0a1f;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;touch-action:none; }
@@ -156,7 +164,25 @@ let boosterState={lastType:null,platformsSinceLast:0,minInterval:4,maxInterval:9
 let nextBoosterIn=5;
 
 // ═══════════════════════════════════════
-//  VISUALS
+//  ANALYTICS
+// ═══════════════════════════════════════
+// Безопасная обёртка — не падает если gtag ещё не загрузился
+function ga(eventName, params){
+    if(typeof gtag === 'function') gtag('event', eventName, params);
+}
+
+// Первый визит vs повторный
+const isFirstVisit = !localStorage.getItem('fg_visited');
+if(isFirstVisit) localStorage.setItem('fg_visited','1');
+
+// Счётчик всех запусков (включая рестарты)
+let totalLaunches = parseInt(localStorage.getItem('fg_launches')||'0');
+
+// Время начала текущей сессии (для длительности)
+let sessionStartTime = 0;
+
+// Причина последней смерти
+let lastDeathCause = 'fall'; // 'fall' | 'mine'
 // ═══════════════════════════════════════
 let currentShape='square',currentPlayerColor='#e74c3c',currentTheme={};
 const shapes      =['square','circle','triangle','diamond'];
@@ -357,6 +383,16 @@ function startGame(){
     resetGame();
     gameRunning=true;
     if(!loopRunning){ loopRunning=true; requestAnimationFrame(loop); }
+
+    totalLaunches++;
+    localStorage.setItem('fg_launches', totalLaunches);
+    sessionStartTime = Date.now();
+    ga('game_start', {
+        launch_number: totalLaunches,
+        is_first_visit: isFirstVisit,
+        shape: currentShape,
+        color: currentPlayerColor,
+    });
 }
 
 function restartGame(){
@@ -364,9 +400,16 @@ function restartGame(){
     document.getElementById('pause-btn').style.display='flex';
     resetGame();
     gameRunning=true;
-    // loopRunning уже true — цикл всё ещё крутится во время анимации смерти
-    // Если почему-то остановился — перезапускаем
     if(!loopRunning){ loopRunning=true; requestAnimationFrame(loop); }
+
+    totalLaunches++;
+    localStorage.setItem('fg_launches', totalLaunches);
+    sessionStartTime = Date.now();
+    ga('game_restart', {
+        launch_number: totalLaunches,
+        shape: currentShape,
+        color: currentPlayerColor,
+    });
 }
 
 function restartFromPause(){
@@ -390,18 +433,36 @@ function togglePause(){
 
 function showGameOver(){
     const s=Math.floor(score),hc=Math.max(totalCoins,highCoins);
-    if(s>highScore){highScore=s;localStorage.setItem('cubeRunnerHS',s);}
+    const isNewRecord = s > highScore;
+    if(isNewRecord){highScore=s;localStorage.setItem('cubeRunnerHS',s);}
     localStorage.setItem('cubeRunnerHC',hc);highCoins=hc;
     document.getElementById('final').textContent    =`Счёт: ${s} м`;
     document.getElementById('best').textContent     =`Рекорд: ${highScore} м`;
     document.getElementById('coinscore').textContent=`Монет: ${totalCoins} (макс: ${hc})`;
-    // #2 — показываем СРАЗУ, не останавливаем цикл
     document.getElementById('gameover').style.display='flex';
     document.getElementById('pause-btn').style.display='none';
+
+    const sessionSec = Math.round((Date.now() - sessionStartTime) / 1000);
+    ga('game_over', {
+        distance_m:      s,
+        coins_collected: totalCoins,
+        death_cause:     lastDeathCause,
+        session_seconds: sessionSec,
+        is_new_record:   isNewRecord,
+        shape:           currentShape,
+        launch_number:   totalLaunches,
+    });
 }
 
-let medalTimer=0;
-function checkMedals(){ for(let m of MEDALS) if(!m.shown&&score>=m.dist){m.shown=true;showMedal(m.label);break;} }
+function checkMedals(){
+    for(let m of MEDALS){
+        if(!m.shown&&score>=m.dist){
+            m.shown=true; showMedal(m.label);
+            ga('medal_reached', { distance_m: m.dist, label: m.label });
+            break;
+        }
+    }
+}
 function showMedal(label){
     const el=document.getElementById('medal-popup');
     el.textContent=label;el.style.opacity='1';
@@ -409,10 +470,13 @@ function showMedal(label){
     medalTimer=setTimeout(()=>{el.style.opacity='0';},2200);
 }
 
+let medalTimer=0;
+
 function applyBooster(type,x,y){
     if(type==='jump'){ player.superJumpTimer=300;spawnParticles(x,y,'#00e5ff',12);showMedal('⚡ Супер-прыжок!'); }
     else if(type==='speed'){ player.speedBoostTimer=SPEED_BOOST_DUR;spawnParticles(x,y,'#ff9800',12);showMedal('🚀 Ускорение!'); }
     else if(type==='shield'){ player.shield=true;player.shieldTimer=400;spawnParticles(x,y,'#8bc34a',12);showMedal('🛡️ Щит!'); }
+    ga('booster_collected', { booster_type: type, distance_m: Math.floor(score) });
 }
 
 // ═══════════════════════════════════════
@@ -504,6 +568,7 @@ function update(){
         for(let h of hazards){
             const hx=h.x-cameraX;
             if(Math.hypot(hx+h.r-(player.x+player.size/2), h.y-(player.y+player.size/2))<h.r+player.size*0.35){
+                lastDeathCause = 'mine';
                 triggerDeathAnim(player.x+player.size/2,player.y+player.size/2); return;
             }
         }
@@ -528,7 +593,7 @@ function update(){
         }
     }
 
-    if(player.y>H+80){ triggerDeathAnim(player.x+player.size/2,H-50); return; }
+    if(player.y>H+80){ lastDeathCause='fall'; triggerDeathAnim(player.x+player.size/2,H-50); return; }
 
     checkMedals();
     while(lastPlatformEnd-cameraX<W+700) generateNextPlatform();
