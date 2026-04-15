@@ -51,19 +51,25 @@
         #pause-menu {
             position:absolute; top:0;left:0;width:100vw;height:100vh;
             display:none; flex-direction:column; justify-content:center; align-items:center;
-            background:rgba(0,0,0,0.6);
-            z-index:25; gap:clamp(14px,3vw,24px);
-            backdrop-filter:blur(2px);
+            background:rgba(0,0,0,0.65);
+            z-index:25; gap:clamp(16px,3.5vw,28px);
+            backdrop-filter:blur(3px);
         }
-        .pause-btn {
+        .pause-action-btn {
             pointer-events:auto;
-            width:clamp(64px,16vw,88px); height:clamp(64px,16vw,88px);
-            font-size:clamp(30px,8vw,46px);
-            background:rgba(255,255,255,0.15); color:#fff;
-            border:3px solid rgba(255,255,255,0.6); border-radius:50%;
-            cursor:pointer; transition:all 0.1s;
+            display:flex; align-items:center; gap:clamp(12px,3vw,18px);
+            padding: clamp(13px,3vw,18px) clamp(28px,7vw,44px);
+            font-size:clamp(17px,4.5vw,24px); font-weight:600;
+            color:rgba(255,255,255,0.92); letter-spacing:0.5px;
+            background: transparent;
+            border: 1.5px solid rgba(255,255,255,0.35);
+            border-radius: 14px;
+            cursor:pointer; transition: border-color 0.15s, color 0.15s;
+            min-width: clamp(190px,46vw,250px);
         }
-        .pause-btn:active { background:rgba(255,255,255,0.3); transform:scale(0.93); }
+        .pause-action-btn:hover { border-color:rgba(255,255,255,0.7); color:#fff; }
+        .pause-action-btn:active { opacity:0.75; }
+        .pause-action-btn svg { flex-shrink:0; opacity:0.85; }
     </style>
 </head>
 <body>
@@ -93,8 +99,19 @@
 
 <!-- Меню паузы -->
 <div id="pause-menu">
-    <button class="pause-btn" onclick="togglePause()" title="Продолжить">▶</button>
-    <button class="pause-btn" onclick="restartFromPause()" title="Начать сначала">🔁</button>
+    <button class="pause-action-btn" onclick="togglePause()">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <polygon points="7,3 23,13 7,23" fill="white"/>
+        </svg>
+        Продолжить
+    </button>
+    <button class="pause-action-btn" onclick="restartFromPause()">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <path d="M13 4 A9 9 0 1 1 5.5 8" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <polygon points="3,5 8,10 8,0" fill="white"/>
+        </svg>
+        Сначала
+    </button>
 </div>
 
 <div id="score">0 м</div>
@@ -144,7 +161,7 @@ let player={
 };
 
 let baseSpeed=4.85, currentSpeed=baseSpeed;
-let platforms=[], hazards=[], particles=[];
+let platforms=[], hazards=[], particles=[], freeCoins=[];
 let cameraX=0, score=0, totalCoins=0;
 let highScore=parseInt(localStorage.getItem('cubeRunnerHS'))||0;
 let highCoins =parseInt(localStorage.getItem('cubeRunnerHC'))||0;
@@ -221,6 +238,7 @@ const DEATH_TITLES={explode:'💥 ВЗРЫВ!',dissolve:'✨ РАСПАЛСЯ!',
 function triggerDeathAnim(x,y){
     const type=DEATH_TYPES[Math.floor(Math.random()*DEATH_TYPES.length)];
     player.dead=true;
+    score = Math.floor(score); // фиксируем счёт точно в момент смерти
     player.deathAnim={type,t:0,x,y,done:false};
 
 
@@ -284,13 +302,34 @@ function decoratePlatform(p){
     const margin=28,usable=p.w-margin*2;
     if(usable<20) return;
     const n=Math.floor(Math.random()*5);
-    if(n>0){const sp=usable/(n+1);for(let i=0;i<n;i++) p.coinItems.push({relX:margin+sp*(i+1),collected:false});}
+    if(n>0){
+        const sp=usable/(n+1);
+        for(let i=0;i<n;i++){
+            const relX=margin+sp*(i+1);
+            if(p.type==='lift'){
+                // Лифты — относительные (монеты двигаются с платформой)
+                p.coinItems.push({relX,collected:false});
+            } else {
+                // Остальные — сразу абсолютные мировые координаты
+                freeCoins.push({x:p.x+relX, y:p.y-28, collected:false});
+            }
+        }
+    }
     if(p.type==='normal'){
         boosterState.platformsSinceLast++;
         if(boosterState.platformsSinceLast>=nextBoosterIn){
             const avail=boosterTypes.filter(t=>t!==boosterState.lastType);
             const picked=avail[Math.floor(Math.random()*avail.length)];
-            p.booster={relX:margin+Math.random()*usable,type:picked,collected:false};
+            // Собираем relX монет этой платформы из freeCoins (они только что добавлены)
+            const myCoins=freeCoins.filter(c=>c.x>=p.x&&c.x<=p.x+p.w);
+            // Пробуем найти позицию вдали от монет (до 10 попыток)
+            let rx, tries=0, safe=false;
+            do {
+                rx=margin+Math.random()*usable;
+                safe=myCoins.every(c=>Math.abs((p.x+rx)-c.x)>32);
+                tries++;
+            } while(!safe && tries<10);
+            p.booster={relX:rx, type:picked, collected:false};
             boosterState.lastType=picked;
             boosterState.platformsSinceLast=0;
             nextBoosterIn=boosterState.minInterval+Math.floor(Math.random()*(boosterState.maxInterval-boosterState.minInterval+1));
@@ -350,7 +389,7 @@ function resetGame(){
         shield:false,shieldTimer:0,superJumpTimer:0,speedBoostTimer:0,
         onLift:null,prevLiftY:0,dead:false,deathAnim:null});
     cameraX=0;score=0;totalCoins=0;currentSpeed=baseSpeed;lastPlatformEnd=720;
-    particles=[];hazards=[];MEDALS=buildMedals();
+    particles=[];hazards=[];freeCoins=[];MEDALS=buildMedals();
     boosterState={lastType:null,platformsSinceLast:0,minInterval:4,maxInterval:9};
     nextBoosterIn=5;
     platforms=[
@@ -380,6 +419,7 @@ function jump(){
 function startGame(){
     document.getElementById('start').style.display='none';
     document.getElementById('pause-btn').style.display='flex';
+    setPauseIcon(false);
     resetGame();
     gameRunning=true;
     if(!loopRunning){ loopRunning=true; requestAnimationFrame(loop); }
@@ -398,6 +438,7 @@ function startGame(){
 function restartGame(){
     document.getElementById('gameover').style.display='none';
     document.getElementById('pause-btn').style.display='flex';
+    setPauseIcon(false);
     resetGame();
     gameRunning=true;
     if(!loopRunning){ loopRunning=true; requestAnimationFrame(loop); }
@@ -417,16 +458,26 @@ function restartFromPause(){
     paused=false;
     document.getElementById('gameover').style.display='none';
     document.getElementById('pause-btn').style.display='flex';
+    setPauseIcon(false);
     resetGame();
     gameRunning=true;
     if(!loopRunning){ loopRunning=true; requestAnimationFrame(loop); }
+    totalLaunches++;
+    localStorage.setItem('fg_launches', totalLaunches);
+    sessionStartTime = Date.now();
+    ga('game_restart', { launch_number: totalLaunches, shape: currentShape, color: currentPlayerColor });
+}
+
+// Единый источник иконки кнопки паузы
+function setPauseIcon(isPaused){
+    document.getElementById('pause-btn').textContent = isPaused ? '▶' : '⏸';
 }
 
 // ── #3 ПАУЗА ──────────────────────────────────────────────
 function togglePause(){
-    if(!gameRunning&&!paused) return; // нечего паузить до старта
+    if(!gameRunning&&!paused) return;
     paused=!paused;
-    document.getElementById('pause-btn').textContent=paused?'▶':'⏸';
+    setPauseIcon(paused);
     document.getElementById('pause-menu').style.display=paused?'flex':'none';
     if(!paused&&!loopRunning){ loopRunning=true; requestAnimationFrame(loop); }
 }
@@ -436,7 +487,7 @@ function showGameOver(){
     const isNewRecord = s > highScore;
     if(isNewRecord){highScore=s;localStorage.setItem('cubeRunnerHS',s);}
     localStorage.setItem('cubeRunnerHC',hc);highCoins=hc;
-    document.getElementById('final').textContent    =`Счёт: ${s} м`;
+    document.getElementById('final').textContent    =`Расстояние: ${s} м`;
     document.getElementById('best').textContent     =`Рекорд: ${highScore} м`;
     document.getElementById('coinscore').textContent=`Монет: ${totalCoins} (макс: ${hc})`;
     document.getElementById('gameover').style.display='flex';
@@ -574,9 +625,9 @@ function update(){
         }
     }
 
-    // Монеты + бустеры
+    // Монеты лифтов (только лифты хранят coinItems с relX)
     for(let p of platforms){
-        if(p.dead) continue;
+        if(p.dead||p.type!=='lift') continue;
         for(let c of p.coinItems){
             if(c.collected) continue;
             const cx=p.x+c.relX-cameraX,cy=p.y-28;
@@ -585,6 +636,10 @@ function update(){
                 document.getElementById('coins-hud').textContent=`💰 ${totalCoins}`;
             }
         }
+    }
+    // Бустеры
+    for(let p of platforms){
+        if(p.dead) continue;
         if(p.booster&&!p.booster.collected){
             const bx=p.x+p.booster.relX-cameraX,by=p.y-36;
             if(player.x+player.size>bx-16&&player.x<bx+16&&player.y+player.size>by-16&&player.y<by+16){
@@ -592,6 +647,16 @@ function update(){
             }
         }
     }
+    // Свободные монеты (отпущенные с рассыпавшихся платформ)
+    for(let c of freeCoins){
+        if(c.collected) continue;
+        const cx=c.x-cameraX, cy=c.y;
+        if(player.x+player.size>cx-12&&player.x<cx+12&&player.y+player.size>cy-12&&player.y<cy+12){
+            c.collected=true;totalCoins++;spawnParticles(cx,cy,'#f1c40f',7);
+            document.getElementById('coins-hud').textContent=`💰 ${totalCoins}`;
+        }
+    }
+    freeCoins=freeCoins.filter(c=>!c.collected&&(c.x-cameraX)>-80);
 
     if(player.y>H+80){ lastDeathCause='fall'; triggerDeathAnim(player.x+player.size/2,H-50); return; }
 
@@ -676,27 +741,48 @@ function draw(){
             for(let i=0;i<n;i++){const fx=(i+1)/(n+1);const bx2=lx+(rx-lx)*fx;const bezY=ty+2*sag*fx*(1-fx)+sag*fx*fx;ctx.beginPath();ctx.moveTo(bx2,p.y);ctx.lineTo(bx2,bezY);ctx.stroke();}
         }
 
-        // Монеты
-        for(let c of p.coinItems){
-            if(c.collected) continue;
-            const cx2=sx+c.relX,cy2=p.y-28,bounce=Math.sin(performance.now()/300+c.relX)*4;
-            ctx.save();ctx.shadowColor='#f1c40f';ctx.shadowBlur=8;ctx.fillStyle='#f1c40f';ctx.strokeStyle='#e67e22';ctx.lineWidth=3;
-            ctx.beginPath();ctx.arc(cx2,cy2+bounce,10,0,Math.PI*2);ctx.fill();ctx.stroke();
-            ctx.fillStyle='#fff8';ctx.beginPath();ctx.arc(cx2-3,cy2+bounce-3,4,0,Math.PI*2);ctx.fill();ctx.restore();
+        // Монеты лифта (только лифт — остальные в freeCoins)
+        if(p.type==='lift'){
+            for(let c of p.coinItems){
+                if(c.collected) continue;
+                const cx2=sx+c.relX,cy2=p.y-28,bounce=Math.sin(performance.now()/300+c.relX)*4;
+                ctx.save();ctx.shadowColor='#f1c40f';ctx.shadowBlur=8;ctx.fillStyle='#f1c40f';ctx.strokeStyle='#e67e22';ctx.lineWidth=3;
+                ctx.beginPath();ctx.arc(cx2,cy2+bounce,10,0,Math.PI*2);ctx.fill();ctx.stroke();
+                ctx.fillStyle='#fff8';ctx.beginPath();ctx.arc(cx2-3,cy2+bounce-3,4,0,Math.PI*2);ctx.fill();ctx.restore();
+            }
         }
 
-        // Бустеры
-        if(p.booster&&!p.booster.collected){
-            const bx=sx+p.booster.relX,by=p.y-36,pulse=0.85+Math.sin(performance.now()/200)*0.15;
-            let bgColor,icon;
-            if(p.booster.type==='jump'){bgColor='#00bcd4';icon='⚡';}
-            else if(p.booster.type==='speed'){bgColor='#ff9800';icon='🚀';}
-            else{bgColor='#8bc34a';icon='🛡️';}
-            ctx.save();ctx.translate(bx,by);ctx.scale(pulse,pulse);ctx.shadowColor=bgColor;ctx.shadowBlur=14;ctx.fillStyle=bgColor;
-            ctx.beginPath();ctx.roundRect(-16,-16,32,32,8);ctx.fill();
-            ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(icon,0,1);ctx.restore();
-        }
         ctx.restore();
+    }
+
+    // ── Свободные монеты (под бустерами) ────────────────────
+    for(let c of freeCoins){
+        if(c.collected) continue;
+        const cx2=c.x-cameraX, cy2=c.y;
+        if(cx2<-20||cx2>W+20) continue;
+        const bounce=Math.sin(performance.now()/300+c.x)*4;
+        ctx.save();
+        ctx.shadowColor='#f1c40f';ctx.shadowBlur=8;
+        ctx.fillStyle='#f1c40f';ctx.strokeStyle='#e67e22';ctx.lineWidth=3;
+        ctx.beginPath();ctx.arc(cx2,cy2+bounce,10,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#fff8';ctx.beginPath();ctx.arc(cx2-3,cy2+bounce-3,4,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+    }
+
+    // ── Бустеры (поверх монет) ───────────────────────────────
+    for(let p of platforms){
+        if(p.dead) continue;
+        const sx=p.x-cameraX;
+        if(sx>W+150||sx+p.w<-150) continue;
+        if(!p.booster||p.booster.collected) continue;
+        const bx=sx+p.booster.relX,by=p.y-36,pulse=0.85+Math.sin(performance.now()/200)*0.15;
+        let bgColor,icon;
+        if(p.booster.type==='jump'){bgColor='#00bcd4';icon='⚡';}
+        else if(p.booster.type==='speed'){bgColor='#ff9800';icon='🚀';}
+        else{bgColor='#8bc34a';icon='🛡️';}
+        ctx.save();ctx.translate(bx,by);ctx.scale(pulse,pulse);ctx.shadowColor=bgColor;ctx.shadowBlur=14;ctx.fillStyle=bgColor;
+        ctx.beginPath();ctx.roundRect(-16,-16,32,32,8);ctx.fill();
+        ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(icon,0,1);ctx.restore();
     }
 
     // ── #4 МИНЫ — маленькие, шипы острые наружу ─────────────
