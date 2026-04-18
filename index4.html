@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>ФИГУРАНЕР</title>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JPBPKS9NPX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-JPBPKS9NPX');
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin:0;padding:0;background:#0a0a1f;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;touch-action:none; }
+        canvas#game { display:block;width:auto;height:100vh;max-width:100vw;aspect-ratio:540/960;object-fit:contain;border:6px solid #fff;border-radius:12px;box-shadow:0 0 40px rgba(255,255,255,0.3);image-rendering:pixelated; }
+
+        /* ── OVERLAY (старт / конец) ── */
+        #overlay { position:absolute;top:0;left:0;width:100vw;height:100vh;pointer-events:none;display:flex;flex-direction:column;justify-content:center;align-items:center;color:white;text-align:center;text-shadow:0 4px 12px rgba(0,0,0,0.9);padding:16px; }
+        h1 { font-size:clamp(28px,8vw,52px);margin:0 0 8px 0;letter-spacing:3px;line-height:1.1; }
+        .subtitle { font-size:clamp(13px,3.5vw,22px);margin:4px 0;opacity:0.9; }
+        .score-line { font-size:clamp(16px,4.5vw,26px);margin:5px 0;font-weight:bold; }
+        .overlay-btn { pointer-events:auto;margin-top:clamp(14px,3vw,30px);padding:clamp(10px,2.5vw,16px) clamp(22px,6vw,40px);font-size:clamp(18px,5vw,26px);background:#ff3366;color:white;border:none;border-radius:50px;cursor:pointer;box-shadow:0 6px 0 #c00;transition:all 0.1s; }
+        .overlay-btn:active { transform:translateY(4px);box-shadow:0 2px 0 #c00; }
+        .gameover-box { display:flex;flex-direction:column;align-items:center;gap:2px;max-width:90vw; }
+
+        /* ── HUD постоянный ── */
+        #score { position:absolute;top:16px;left:16px;font-size:clamp(20px,5vw,36px);font-weight:bold;color:#fff;text-shadow:0 3px 8px rgba(0,0,0,0.7);z-index:10; }
+        #coins-hud {
+            position:absolute; top:14px; right:clamp(60px,12vw,80px);
+            text-align:right; z-index:10;
+            text-shadow:0 3px 8px rgba(0,0,0,0.7);
+        }
+        #coins-session {
+            font-size:clamp(20px,5vw,34px); font-weight:bold; color:#f1c40f;
+            line-height:1.1;
+        }
+        #coins-total {
+            font-size:clamp(11px,2.8vw,17px); font-weight:600;
+            color:rgba(255,210,60,0.7); line-height:1;
+        }
+        .medal-popup { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(22px,6vw,38px);font-weight:bold;color:#f1c40f;text-shadow:0 4px 16px rgba(0,0,0,0.9);pointer-events:none;opacity:0;transition:opacity 0.3s;z-index:20;white-space:nowrap; }
+
+        /* ── ПАУЗА кнопка ── */
+        #pause-btn {
+            position:absolute; top:12px; right:12px;
+            width:clamp(38px,8vw,52px); height:clamp(38px,8vw,52px);
+            font-size:clamp(18px,4.5vw,26px);
+            background:rgba(0,0,0,0.45); color:#fff;
+            border:2px solid rgba(255,255,255,0.5); border-radius:50%;
+            cursor:pointer; z-index:30;
+            display:none;
+            align-items:center; justify-content:center;
+            transition: background 0.15s;
+            line-height:1;
+        }
+        #pause-btn:active { background:rgba(255,255,255,0.2); }
+
+        /* ── ПАУЗА меню ── */
+        #pause-menu {
+            position:absolute; top:0;left:0;width:100vw;height:100vh;
+            display:none; flex-direction:column; justify-content:center; align-items:center;
+            background:rgba(0,0,0,0.65);
+            z-index:25; gap:clamp(16px,3.5vw,28px);
+            backdrop-filter:blur(3px);
+        }
+        .pause-action-btn {
+            pointer-events:auto;
+            display:flex; align-items:center; gap:clamp(12px,3vw,18px);
+            padding: clamp(13px,3vw,18px) clamp(28px,7vw,44px);
+            font-size:clamp(17px,4.5vw,24px); font-weight:600;
+            color:rgba(255,255,255,0.92); letter-spacing:0.5px;
+            background: transparent;
+            border: 1.5px solid rgba(255,255,255,0.35);
+            border-radius: 14px;
+            cursor:pointer; transition: border-color 0.15s, color 0.15s;
+            min-width: clamp(190px,46vw,250px);
+        }
+        .pause-action-btn:hover { border-color:rgba(255,255,255,0.7); color:#fff; }
+        .pause-action-btn:active { opacity:0.75; }
+        .pause-action-btn svg { flex-shrink:0; opacity:0.85; }
+    </style>
+</head>
+<body>
+<canvas id="game" width="540" height="960"></canvas>
+
+<!-- Старт / конец -->
+<div id="overlay">
+    <div id="start">
+        <h1>ФИГУРАНЕР</h1>
+        <p class="subtitle">Тап / клик / ПРОБЕЛ — прыжок</p>
+        <p class="subtitle">Двойной прыжок в воздухе</p>
+        <button class="overlay-btn" onclick="startGame()">НАЧАТЬ ИГРУ</button>
+    </div>
+    <div id="gameover" style="display:none">
+        <div class="gameover-box">
+            <h1>Не победил</h1>
+            <p class="score-line" id="final">Счёт: 0 м</p>
+            <p class="score-line" id="best">Рекорд: 0 м</p>
+            <p class="score-line" id="coinscore">Монет: 0</p>
+            <button class="overlay-btn" onclick="restartGame()">ЕЩЁ РАЗ</button>
+        </div>
+    </div>
+</div>
+
+<!-- Кнопка паузы -->
+<button id="pause-btn" onclick="togglePause()">⏸</button>
+
+<!-- Меню паузы -->
+<div id="pause-menu">
+    <button class="pause-action-btn" onclick="togglePause()">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <polygon points="7,3 23,13 7,23" fill="white"/>
+        </svg>
+        Продолжить
+    </button>
+    <button class="pause-action-btn" onclick="restartFromPause()">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <path d="M13 4 A9 9 0 1 1 5.5 8" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <polygon points="3,5 8,10 8,0" fill="white"/>
+        </svg>
+        Сначала
+    </button>
+</div>
+
+<div id="score">0 м</div>
+<div id="coins-hud">
+    <div id="coins-session">🪙 <span id="coins-val">0</span></div>
+    <div id="coins-total">итого: 0</div>
+</div>
+<div class="medal-popup" id="medal-popup"></div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx    = canvas.getContext('2d');
+const W=540, H=960;
+
+// ═══════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════
+const GRAVITY         = 0.95;
+const JUMP            = -19.5;
+const SUPER_JUMP      = -27;
+const BOUNCE_VY       = -28;
+const SPEED_BOOST_ADD = 3.5;
+const SPEED_BOOST_DUR = 120;
+
+// ═══════════════════════════════════════
+//  MEDALS
+// ═══════════════════════════════════════
+function buildMedals(){
+    const f=[
+        {dist:500,label:'🥉 500 м!'},{dist:2000,label:'🥈 2000 м!'},
+        {dist:4000,label:'🥇 4000 м!'},{dist:7000,label:'🏅 7000 м!'},
+        {dist:10000,label:'🏆 10000 м!'},{dist:15000,label:'💎 15000 м!'},
+        {dist:20000,label:'🌟 20000 м!'},
+    ];
+    for(let d=30000;d<=200000;d+=10000) f.push({dist:d,label:`🔥 ${d} м!`});
+    return f.map(m=>({...m,shown:false}));
+}
+let MEDALS=buildMedals();
+
+// ═══════════════════════════════════════
+//  PLAYER
+// ═══════════════════════════════════════
+let player={
+    x:110,y:620,size:48,vy:0,rotation:0,
+    grounded:true,jumpsLeft:2,
+    shield:false,shieldTimer:0,
+    superJumpTimer:0,speedBoostTimer:0,
+    onLift:null,prevLiftY:0,
+    onSlide:null,
+    dead:false, deathAnim:null
+};
+
+let baseSpeed=4.85, currentSpeed=baseSpeed;
+let platforms=[], hazards=[], particles=[], freeCoins=[];
+let cameraX=0, score=0, totalCoins=0;
+let highScore   = parseInt(localStorage.getItem('cubeRunnerHS'))||0;
+let highCoins   = parseInt(localStorage.getItem('cubeRunnerHC'))||0;
+// Накопленные монеты за все запуски — не сбрасывается
+let allTimeCoins = parseInt(localStorage.getItem('cubeRunnerATC'))||0;
+
+// Ghost-trail буфер: 8 последних позиций фигуры
+const TRAIL_LEN=8;
+let trailBuf=[];
+let speedTrailBuf=[];
+
+// ── LOOP CONTROL ──────────────────────────────────────────
+// Один флаг «цикл запущен» — предотвращает двойной rAF
+let loopRunning=false;
+let gameRunning=false;   // true = физика активна (игра идёт или анимация смерти)
+let paused=false;
+let lastPlatformEnd=0;
+
+// ═══════════════════════════════════════
+//  БУСТЕР-ТРЕКЕР
+// ═══════════════════════════════════════
+const boosterTypes=['jump','speed','shield'];
+let boosterState={lastType:null,platformsSinceLast:0,minInterval:4,maxInterval:9};
+let nextBoosterIn=5;
+
+// ═══════════════════════════════════════
+//  ANALYTICS
+// ═══════════════════════════════════════
+// Безопасная обёртка — не падает если gtag ещё не загрузился
+function ga(eventName, params){
+    if(typeof gtag === 'function') gtag('event', eventName, params);
+}
+
+// Первый визит vs повторный
+const isFirstVisit = !localStorage.getItem('fg_visited');
+if(isFirstVisit) localStorage.setItem('fg_visited','1');
+
+// Счётчик всех запусков (включая рестарты)
+let totalLaunches = parseInt(localStorage.getItem('fg_launches')||'0');
+
+// Время начала текущей сессии (для длительности)
+let sessionStartTime = 0;
+
+// Причина последней смерти
+let lastDeathCause = 'fall'; // 'fall' | 'mine'
+// ═══════════════════════════════════════
+let currentShape='square',currentPlayerColor='#e74c3c',currentTheme={};
+const shapes      =['square','circle','triangle','diamond'];
+const playerColors=['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#ff6b5e'];
+const themes=[
+    {skyTop:'#4a9eff',skyBot:'#b0e0ff',plat:'#3d250f',stroke:'#2a1808',grass:'#27ae60'},
+    {skyTop:'#6a4cff',skyBot:'#a0a0ff',plat:'#2c3e50',stroke:'#1c2a38',grass:'#1abc9c'},
+    {skyTop:'#ff9e4a',skyBot:'#ffd04a',plat:'#8d5524',stroke:'#5e3a1a',grass:'#f1c40f'},
+    {skyTop:'#2ecc71',skyBot:'#27ae60',plat:'#27ae60',stroke:'#1e8449',grass:'#f39c12'},
+    {skyTop:'#ff5e9e',skyBot:'#ffb3e6',plat:'#8e44ad',stroke:'#5e2a7a',grass:'#e67e22'},
+];
+const clouds=[{x:80,y:140,s:1.1},{x:320,y:210,s:0.85},{x:480,y:110,s:1.3},{x:720,y:250,s:0.9}];
+
+// ═══════════════════════════════════════
+//  PARTICLES
+// ═══════════════════════════════════════
+function spawnParticles(x,y,color,count=8,opts={}){
+    for(let i=0;i<count;i++){
+        const a=(Math.PI*2/count)*i+Math.random()*0.5;
+        const spd=opts.spd||1;
+        particles.push({x,y,
+            vx:Math.cos(a)*(2+Math.random()*3)*spd,
+            vy:Math.sin(a)*(2+Math.random()*3)*spd-2,
+            life:1,decay:opts.decay||(0.04+Math.random()*0.04),
+            size:opts.size||(4+Math.random()*5),
+            color,shape:opts.shape||'circle'});
+    }
+}
+
+// ═══════════════════════════════════════
+//  DEATH ANIMATIONS
+// ═══════════════════════════════════════
+const DEATH_TYPES=['explode','dissolve','pop','melt','unravel'];
+const DEATH_TITLES={explode:'💥 ВЗРЫВ!',dissolve:'✨ РАСПАЛСЯ!',pop:'🫧 ЛОП!',melt:'💧 РАСПЛАВИЛСЯ!',unravel:'🧵 РАСПУСТИЛСЯ!'};
+
+function triggerDeathAnim(x,y){
+    const type=DEATH_TYPES[Math.floor(Math.random()*DEATH_TYPES.length)];
+    player.dead=true;
+    score = Math.floor(score); // фиксируем счёт точно в момент смерти
+    player.deathAnim={type,t:0,x,y,done:false};
+
+
+    const c=currentPlayerColor;
+    if(type==='explode'){
+        for(let i=0;i<28;i++){
+            const a=Math.random()*Math.PI*2,spd=4+Math.random()*8;
+            particles.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd-3,life:1,decay:0.025+Math.random()*0.02,size:3+Math.random()*9,color:c,shape:'square'});
+        }
+        for(let i=0;i<12;i++){
+            const a=Math.random()*Math.PI*2;
+            particles.push({x,y,vx:Math.cos(a)*2,vy:Math.sin(a)*2,life:1,decay:0.08,size:12+Math.random()*8,color:'#ffeb3b',shape:'circle'});
+        }
+    }else if(type==='dissolve'){
+        for(let i=0;i<40;i++){
+            const a=Math.random()*Math.PI*2,r=Math.random()*24;
+            particles.push({x:x+Math.cos(a)*r*0.3,y:y+Math.sin(a)*r*0.3,vx:(Math.cos(a)+Math.random()-0.5)*2.5,vy:(Math.sin(a)-1.5)*1.8,life:1,decay:0.018+Math.random()*0.015,size:2+Math.random()*6,color:c,shape:'circle'});
+        }
+    }else if(type==='pop'){
+        player.deathAnim.ring={r:5,maxR:80,alpha:1};
+        for(let i=0;i<16;i++){
+            const a=(Math.PI*2/16)*i;
+            particles.push({x,y,vx:Math.cos(a)*6,vy:Math.sin(a)*6-1,life:1,decay:0.04,size:4+Math.random()*5,color:c,shape:'circle'});
+        }
+    }else if(type==='melt'){
+        for(let i=0;i<30;i++){
+            const ox=(Math.random()-0.5)*40;
+            particles.push({x:x+ox,y,vx:(Math.random()-0.5)*1.5,vy:2+Math.random()*4,life:1,decay:0.012+Math.random()*0.01,size:6+Math.random()*8,color:c,shape:'drop'});
+        }
+    }else if(type==='unravel'){
+        for(let i=0;i<36;i++){
+            const a=(Math.PI*2/36)*i,r=5+i*0.6;
+            particles.push({x:x+Math.cos(a)*r*0.3,y:y+Math.sin(a)*r*0.3,vx:Math.cos(a+Math.PI/2)*2.5*(1+i*0.04),vy:Math.sin(a+Math.PI/2)*2.5*(1+i*0.04)-1,life:1,decay:0.02,size:3,color:c,shape:'circle'});
+        }
+    }
+
+    // ── #2 — показываем меню НЕМЕДЛЕННО, не ждём анимации ────
+    showGameOver();
+}
+
+// ═══════════════════════════════════════
+//  PLATFORM FACTORY
+// ═══════════════════════════════════════
+function createPlatform(x,y,w,type='normal'){
+    const p={x,y,w,h:32,type,coinItems:[],booster:null,dead:false,
+        liftY0:y,liftAmp:0,liftSpeed:0,liftPhase:0,_dy:0,
+        crumbleFalling:false,crumbleTimer:0,crumbleAlpha:1,
+        // slide: горизонтальное движение
+        slideX0:x,slideAmp:0,slideSpeed:0,slidePhase:0,_dx:0};
+    if(type==='lift'){
+        p.liftAmp  =60+Math.random()*80;
+        p.liftSpeed=0.018+Math.random()*0.022;
+        p.liftPhase=Math.random()*Math.PI*2;
+    }
+    if(type==='slide'){
+        p.slideAmp  =55+Math.random()*65;
+        p.slideSpeed=0.016+Math.random()*0.02;
+        p.slidePhase=Math.random()*Math.PI*2;
+    }
+    return p;
+}
+
+// ═══════════════════════════════════════
+//  DECORATE
+// ═══════════════════════════════════════
+function decoratePlatform(p){
+    if(p.w<80) return;
+    const margin=28,usable=p.w-margin*2;
+    if(usable<20) return;
+    const n=Math.floor(Math.random()*5);
+    if(n>0){
+        const sp=usable/(n+1);
+        for(let i=0;i<n;i++){
+            const relX=margin+sp*(i+1);
+            if(p.type==='lift'||p.type==='slide'){
+                // Лифты и слайды — относительные (монеты двигаются с платформой)
+                p.coinItems.push({relX,collected:false});
+            } else {
+                // Остальные — сразу абсолютные мировые координаты
+                freeCoins.push({x:p.x+relX, y:p.y-28, collected:false});
+            }
+        }
+    }
+    if(p.type==='normal'){
+        boosterState.platformsSinceLast++;
+        if(boosterState.platformsSinceLast>=nextBoosterIn){
+            const avail=boosterTypes.filter(t=>t!==boosterState.lastType);
+            const picked=avail[Math.floor(Math.random()*avail.length)];
+            // Собираем relX монет этой платформы из freeCoins (они только что добавлены)
+            const myCoins=freeCoins.filter(c=>c.x>=p.x&&c.x<=p.x+p.w);
+            // Пробуем найти позицию вдали от монет (до 10 попыток)
+            let rx, tries=0, safe=false;
+            do {
+                rx=margin+Math.random()*usable;
+                safe=myCoins.every(c=>Math.abs((p.x+rx)-c.x)>32);
+                tries++;
+            } while(!safe && tries<10);
+            p.booster={relX:rx, type:picked, collected:false};
+            boosterState.lastType=picked;
+            boosterState.platformsSinceLast=0;
+            nextBoosterIn=boosterState.minInterval+Math.floor(Math.random()*(boosterState.maxInterval-boosterState.minInterval+1));
+        }
+    }
+}
+
+// ═══════════════════════════════════════
+//  HAZARDS — шипастые шарики (мины)
+// ═══════════════════════════════════════
+function trySpawnHazardsInGap(x1End,x2Start,y1,y2,noMines=false){
+    const gapW=x2Start-x1End;
+    if(gapW<70) return;
+    if(noMines) return;   // #4 — рядом со slide: вообще без мин
+    const diff=Math.min(score/1500,1);
+    if(Math.random()>0.25+diff*0.35) return;
+    const count=Math.random()<0.35?2:1;
+    const midY=(y1+y2)/2;
+    for(let i=0;i<count;i++){
+        const hx=x1End+28+Math.random()*(gapW-56);
+        const hy=midY-10+(Math.random()-0.5)*60;
+        hazards.push({x:hx,y:hy,r:18,phase:Math.random()*Math.PI*2,bobPhase:Math.random()*Math.PI*2});
+    }
+}
+
+// ═══════════════════════════════════════
+//  GENERATE PLATFORM
+// ═══════════════════════════════════════
+function generateNextPlatform(){
+    const last=platforms[platforms.length-1];
+    const diff=Math.min(score/3000,3);
+    const gap=65+Math.random()*110+diff*35;
+    const width=110+Math.random()*160;
+    let newY=last.y+(Math.random()-0.5)*160;
+    newY=Math.max(420,Math.min(780,newY));
+    const newX=last.x+last.w+gap;
+
+    const liftC  =Math.min(score/2000,0.24);
+    const crumbleC=Math.min(score/1200,0.16);
+    const springC =Math.min(score/800, 0.12);
+    const slideC  =Math.min(score/1000,0.18);
+    const rnd=Math.random();
+    let type='normal';
+    if(rnd<liftC)                              type='lift';
+    else if(rnd<liftC+crumbleC)               type='crumble';
+    else if(rnd<liftC+crumbleC+springC)       type='spring';
+    else if(rnd<liftC+crumbleC+springC+slideC) type='slide';
+
+    const p=createPlatform(newX,newY,width,type);
+    decoratePlatform(p);
+    platforms.push(p);
+    // #4: slide-зона без мин
+    trySpawnHazardsInGap(last.x+last.w,newX,last.y,newY, type==='slide'||last.type==='slide');
+    lastPlatformEnd=newX+width;
+
+    // ── #3: Страховочная пара для slide ──────────────────────
+    // Появляется с шансом 65% после 800м
+    if(type==='slide' && score>800 && Math.random()<0.65){
+        const floorDiff = 190 + Math.random()*100; // разница Y ≥190px
+        const goUp      = newY > 600;               // если основная низко — страховка выше
+        const safetyY   = goUp
+            ? Math.max(300, newY - floorDiff)
+            : Math.min(800, newY + floorDiff);
+
+        const safetyW = 110 + Math.random()*70;
+        // Страховочная платформа начинается чуть правее основной
+        const safetyX = newX + width*0.2 + Math.random()*width*0.3;
+
+        // Проверка: не пересекаемся с другими платформами
+        const overlaps = platforms.some(q =>
+            !q.dead &&
+            safetyX < q.x+q.w+30 && safetyX+safetyW > q.x-30 &&
+            Math.abs(safetyY - q.y) < 55
+        );
+
+        if(!overlaps && safetyY > 280 && safetyY < 830){
+            const safety = createPlatform(safetyX, safetyY, safetyW, 'slide');
+            decoratePlatform(safety);
+            platforms.push(safety);
+            if(safetyX+safetyW > lastPlatformEnd) lastPlatformEnd = safetyX+safetyW;
+
+            // ── Промежуточная «мостовая» платформа ───────────
+            // Ставим нормальную платформу между двумя slide по Y,
+            // чтобы игрок мог выбраться со страховочной обратно
+            const midY2   = (newY + safetyY) / 2;
+            const midX    = safetyX + safetyW + 60 + Math.random()*80;
+            const midW    = 100 + Math.random()*60;
+            const midOverlaps = platforms.some(q =>
+                !q.dead &&
+                midX < q.x+q.w+25 && midX+midW > q.x-25 &&
+                Math.abs(midY2 - q.y) < 50
+            );
+            if(!midOverlaps && midY2 > 300 && midY2 < 820){
+                const bridge = createPlatform(midX, midY2, midW, 'normal');
+                decoratePlatform(bridge);
+                platforms.push(bridge);
+                if(midX+midW > lastPlatformEnd) lastPlatformEnd = midX+midW;
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════
+function resetGame(){
+    currentShape      =shapes[Math.floor(Math.random()*shapes.length)];
+    currentPlayerColor=playerColors[Math.floor(Math.random()*playerColors.length)];
+    currentTheme      =themes[Math.floor(Math.random()*themes.length)];
+    Object.assign(player,{x:110,y:620,vy:0,rotation:0,grounded:true,jumpsLeft:2,
+        shield:false,shieldTimer:0,superJumpTimer:0,speedBoostTimer:0,
+        onLift:null,prevLiftY:0,onSlide:null,dead:false,deathAnim:null});
+    cameraX=0;score=0;totalCoins=0;currentSpeed=baseSpeed;lastPlatformEnd=720;
+    particles=[];hazards=[];freeCoins=[];trailBuf=[];speedTrailBuf=[];MEDALS=buildMedals();
+    boosterState={lastType:null,platformsSinceLast:0,minInterval:4,maxInterval:9};
+    nextBoosterIn=5;
+    platforms=[
+        createPlatform(0,720,900),
+        createPlatform(1010,650,160),
+        createPlatform(1250,740,190),
+        createPlatform(1530,580,140),
+    ];
+    for(let i=1;i<platforms.length;i++) decoratePlatform(platforms[i]);
+    for(let i=0;i<14;i++) generateNextPlatform();
+    updateCoinsHud();
+    document.getElementById('score').textContent='0 м';
+}
+
+// ═══════════════════════════════════════
+//  GAME FLOW
+// ═══════════════════════════════════════
+function jump(){
+    if(!gameRunning||player.dead||paused) return;
+    if(player.jumpsLeft>0){
+        player.vy=player.superJumpTimer>0?SUPER_JUMP:JUMP;
+        player.grounded=false;player.onLift=null;player.onSlide=null;player.jumpsLeft--;
+        spawnParticles(player.x+player.size/2,player.y+player.size,currentPlayerColor,6);
+    }
+}
+
+function startGame(){
+    document.getElementById('start').style.display='none';
+    document.getElementById('pause-btn').style.display='flex';
+    setPauseIcon(false);
+    resetGame();
+    gameRunning=true;
+    if(!loopRunning){ loopRunning=true; requestAnimationFrame(loop); }
+
+    totalLaunches++;
+    localStorage.setItem('fg_launches', totalLaunches);
+    sessionStartTime = Date.now();
+    ga('game_start', {
+        launch_number: totalLaunches,
+        is_first_visit: isFirstVisit,
+        shape: currentShape,
+        color: currentPlayerColor,
+    });
+}
+
+function restartGame(){
+    document.getElementById('gameover').style.display='none';
+    document.getElementById('pause-btn').style.display='flex';
+    setPauseIcon(false);
+    resetGame();
+    gameRunning=true;
+    if(!loopRunning){ loopRunning=true; requestAnimationFrame(loop); }
+
+    totalLaunches++;
+    localStorage.setItem('fg_launches', totalLaunches);
+    sessionStartTime = Date.now();
+    ga('game_restart', {
+        launch_number: totalLaunches,
+        shape: currentShape,
+        color: currentPlayerColor,
+    });
+}
+
+function restartFromPause(){
+    document.getElementById('pause-menu').style.display='none';
+    paused=false;
+    document.getElementById('gameover').style.display='none';
+    document.getElementById('pause-btn').style.display='flex';
+    setPauseIcon(false);
+    resetGame();
+    gameRunning=true;
+    if(!loopRunning){ loopRunning=true; requestAnimationFrame(loop); }
+    totalLaunches++;
+    localStorage.setItem('fg_launches', totalLaunches);
+    sessionStartTime = Date.now();
+    ga('game_restart', { launch_number: totalLaunches, shape: currentShape, color: currentPlayerColor });
+}
+
+function updateCoinsHud(){
+    document.getElementById('coins-val').textContent   = totalCoins;
+    document.getElementById('coins-total').textContent = `итого: ${allTimeCoins}`;
+}
+
+// Единый источник иконки кнопки паузы
+function setPauseIcon(isPaused){
+    document.getElementById('pause-btn').textContent = isPaused ? '▶' : '⏸';
+}
+
+// ── #3 ПАУЗА ──────────────────────────────────────────────
+function togglePause(){
+    if(!gameRunning&&!paused) return;
+    paused=!paused;
+    setPauseIcon(paused);
+    document.getElementById('pause-menu').style.display=paused?'flex':'none';
+    if(!paused&&!loopRunning){ loopRunning=true; requestAnimationFrame(loop); }
+}
+
+function showGameOver(){
+    const s=Math.floor(score),hc=Math.max(totalCoins,highCoins);
+    const isNewRecord = s > highScore;
+    if(isNewRecord){highScore=s;localStorage.setItem('cubeRunnerHS',s);}
+    localStorage.setItem('cubeRunnerHC',hc);highCoins=hc;
+    // Накапливаем монеты (они уже добавлены real-time в allTimeCoins при сборе)
+    document.getElementById('final').textContent    =`Расстояние: ${s} м`;
+    document.getElementById('best').textContent     =`Рекорд: ${highScore} м`;
+    document.getElementById('coinscore').textContent=`Монет: ${totalCoins} (итого: ${allTimeCoins})`;
+    document.getElementById('gameover').style.display='flex';
+    document.getElementById('pause-btn').style.display='none';
+
+    const sessionSec = Math.round((Date.now() - sessionStartTime) / 1000);
+    ga('game_over', {
+        distance_m:      s,
+        coins_collected: totalCoins,
+        death_cause:     lastDeathCause,
+        session_seconds: sessionSec,
+        is_new_record:   isNewRecord,
+        shape:           currentShape,
+        launch_number:   totalLaunches,
+    });
+}
+
+function checkMedals(){
+    for(let m of MEDALS){
+        if(!m.shown&&score>=m.dist){
+            m.shown=true; showMedal(m.label);
+            ga('medal_reached', { distance_m: m.dist, label: m.label });
+            break;
+        }
+    }
+}
+function showMedal(label){
+    const el=document.getElementById('medal-popup');
+    el.textContent=label;el.style.opacity='1';
+    clearTimeout(medalTimer);
+    medalTimer=setTimeout(()=>{el.style.opacity='0';},2200);
+}
+
+let medalTimer=0;
+
+function applyBooster(type,x,y){
+    if(type==='jump'){ player.superJumpTimer=300;spawnParticles(x,y,'#00e5ff',12);showMedal('⚡ Супер-прыжок!'); }
+    else if(type==='speed'){ player.speedBoostTimer=SPEED_BOOST_DUR;spawnParticles(x,y,'#ff9800',12);showMedal('🚀 Ускорение!'); }
+    else if(type==='shield'){ player.shield=true;player.shieldTimer=400;spawnParticles(x,y,'#8bc34a',12);showMedal('🛡️ Щит!'); }
+    ga('booster_collected', { booster_type: type, distance_m: Math.floor(score) });
+}
+
+// ═══════════════════════════════════════
+//  UPDATE
+// ═══════════════════════════════════════
+function update(){
+    if(paused) return;
+
+    // Обновляем анимацию смерти (частицы + кольцо pop)
+    // даже когда gameRunning=false — мир продолжает жить
+    if(player.dead){
+        if(player.deathAnim){
+            player.deathAnim.t++;
+            if(player.deathAnim.type==='pop'&&player.deathAnim.ring){
+                const rng=player.deathAnim.ring;
+                rng.r+=5; rng.alpha=Math.max(0,1-rng.r/rng.maxR);
+            }
+        }
+    }
+
+    // Частицы всегда тикают
+    for(let i=particles.length-1;i>=0;i--){
+        const pt=particles[i];
+        pt.x+=pt.vx; pt.y+=pt.vy;
+        pt.vy+=pt.shape==='drop'?0.25:0.18;
+        pt.life-=pt.decay;
+        if(pt.life<=0) particles.splice(i,1);
+    }
+
+    // Лифты и шарики продолжают анимироваться всегда (даже после смерти — красиво)
+    const t=performance.now()/1000;
+    for(let p of platforms){
+        if(p.type==='lift'){
+            const oldY=p.y;
+            p.y=p.liftY0+Math.sin(t*p.liftSpeed*60+p.liftPhase)*p.liftAmp;
+            p.y=Math.max(300,Math.min(800,p.y));
+            p._dy=p.y-oldY;
+        }
+        if(p.type==='slide'){
+            const oldX=p.x;
+            p.x=p.slideX0+Math.sin(t*p.slideSpeed*60+p.slidePhase)*p.slideAmp;
+            p._dx=p.x-oldX;
+        }
+    }
+    for(let h of hazards){ h.phase+=0.04; h.y+=Math.sin(t*2+h.bobPhase)*0.4; }
+
+    // Дальше — только если игра активна (не умер)
+    if(!gameRunning||player.dead) return;
+
+    // ── Скорость ─────────────────────────────────────────────
+    const natural=baseSpeed+(score/5000)*1.2;
+    const boost  =player.speedBoostTimer>0?SPEED_BOOST_ADD:0;
+    currentSpeed =natural+boost;
+
+    if(player.shieldTimer>0)    player.shieldTimer--;
+    if(player.shieldTimer===0)  player.shield=false;
+    if(player.superJumpTimer>0) player.superJumpTimer--;
+    if(player.speedBoostTimer>0)player.speedBoostTimer--;
+
+    // Лифт → игрок (вертикально)
+    if(player.onLift&&!player.onLift.dead&&player.grounded) player.y+=player.onLift._dy;
+    // Слайд → камера (компенсируем движение платформы сдвигом камеры,
+    // фигура остаётся на месте относительно экрана)
+    if(player.onSlide&&!player.onSlide.dead&&player.grounded) cameraX+=player.onSlide._dx;
+
+    // Физика
+    player.vy+=GRAVITY; player.y+=player.vy;
+    cameraX+=currentSpeed; score+=currentSpeed/3.8;
+
+    // Ломающиеся
+    for(let p of platforms){
+        if(p.type==='crumble'&&p.crumbleFalling){
+            p.crumbleTimer--; p.crumbleAlpha=Math.max(0,p.crumbleTimer/15);
+            if(p.crumbleTimer<=0) p.dead=true;
+        }
+    }
+
+    // Вращение
+    if(player.grounded) player.rotation+=currentSpeed*0.092;
+
+    // Коллизия
+    player.grounded=false; player.onLift=null; player.onSlide=null;
+    for(let p of platforms){
+        if(p.dead) continue;
+        const px=p.x-cameraX;
+        if(player.x+player.size>px&&player.x<px+p.w&&player.y+player.size>p.y&&player.y+player.size-player.vy<=p.y+8){
+            player.y=p.y-player.size; player.vy=0; player.grounded=true; player.jumpsLeft=2;
+            if(p.type==='lift')  player.onLift=p;
+            if(p.type==='slide') player.onSlide=p;
+            if(p.type==='spring'){ player.vy=BOUNCE_VY;player.grounded=false;player.onLift=null;player.onSlide=null;player.jumpsLeft=2;spawnParticles(player.x+player.size/2,player.y+player.size,'#ff5722',12);break; }
+            if(p.type==='crumble'&&!p.crumbleFalling){ p.crumbleFalling=true;p.crumbleTimer=15;p.crumbleAlpha=1; }
+            break;
+        }
+    }
+
+    // Мины — коллизия
+    if(!player.shield){
+        for(let h of hazards){
+            const hx=h.x-cameraX;
+            if(Math.hypot(hx+h.r-(player.x+player.size/2), h.y-(player.y+player.size/2))<h.r+player.size*0.35){
+                lastDeathCause = 'mine';
+                triggerDeathAnim(player.x+player.size/2,player.y+player.size/2); return;
+            }
+        }
+    }
+
+    // Монеты лифтов и слайдов (хранят coinItems с relX)
+    for(let p of platforms){
+        if(p.dead||(p.type!=='lift'&&p.type!=='slide')) continue;
+        for(let c of p.coinItems){
+            if(c.collected) continue;
+            const cx=p.x+c.relX-cameraX,cy=p.y-28;
+            if(player.x+player.size>cx-12&&player.x<cx+12&&player.y+player.size>cy-12&&player.y<cy+12){
+                c.collected=true;totalCoins++;allTimeCoins++;
+                localStorage.setItem('cubeRunnerATC',allTimeCoins);
+                spawnParticles(cx,cy,'#f1c40f',7);
+                updateCoinsHud();
+            }
+        }
+    }
+    // Бустеры
+    for(let p of platforms){
+        if(p.dead) continue;
+        if(p.booster&&!p.booster.collected){
+            const bx=p.x+p.booster.relX-cameraX,by=p.y-36;
+            if(player.x+player.size>bx-16&&player.x<bx+16&&player.y+player.size>by-16&&player.y<by+16){
+                p.booster.collected=true;applyBooster(p.booster.type,bx,by);
+            }
+        }
+    }
+    // Свободные монеты (отпущенные с рассыпавшихся платформ)
+    for(let c of freeCoins){
+        if(c.collected) continue;
+        const cx=c.x-cameraX, cy=c.y;
+        if(player.x+player.size>cx-12&&player.x<cx+12&&player.y+player.size>cy-12&&player.y<cy+12){
+            c.collected=true;totalCoins++;allTimeCoins++;
+            localStorage.setItem('cubeRunnerATC',allTimeCoins);
+            spawnParticles(cx,cy,'#f1c40f',7);
+            updateCoinsHud();
+        }
+    }
+    freeCoins=freeCoins.filter(c=>!c.collected&&(c.x-cameraX)>-80);
+
+    if(player.y>H+80){ lastDeathCause='fall'; triggerDeathAnim(player.x+player.size/2,H-50); return; }
+
+    checkMedals();
+    while(lastPlatformEnd-cameraX<W+700) generateNextPlatform();
+    platforms=platforms.filter(p=>!p.dead&&(p.x+p.w-cameraX)>-150);
+    hazards  =hazards.filter(h=>(h.x-cameraX)>-80);
+    document.getElementById('score').textContent=`${Math.floor(score)} м`;
+
+    // Ghost trail для супер-прыжка
+    if(player.superJumpTimer>0){
+        trailBuf.push({x:player.x,y:player.y,r:player.rotation});
+        if(trailBuf.length>TRAIL_LEN) trailBuf.shift();
+    } else {
+        if(trailBuf.length>0) trailBuf.shift();
+    }
+
+	// Ghost trail ускорения — сохраняем полную позицию
+	if(player.speedBoostTimer>0){
+		speedTrailBuf.push({
+			x: player.x + cameraX,
+			y: player.y,
+			r: player.rotation
+		});
+
+		if(speedTrailBuf.length>TRAIL_LEN)
+			speedTrailBuf.shift();
+	}else{
+		if(speedTrailBuf.length>0)
+			speedTrailBuf.shift();
+	}
+}
+
+// ═══════════════════════════════════════
+//  DRAW PARTICLE
+// ═══════════════════════════════════════
+function drawParticle(pt){
+    ctx.save(); ctx.globalAlpha=pt.life; ctx.fillStyle=pt.color;
+    if(pt.shape==='square'){ ctx.fillRect(pt.x-pt.size*pt.life/2,pt.y-pt.size*pt.life/2,pt.size*pt.life,pt.size*pt.life); }
+    else if(pt.shape==='drop'){ ctx.beginPath();ctx.ellipse(pt.x,pt.y,pt.size*pt.life*0.5,pt.size*pt.life,0,0,Math.PI*2);ctx.fill(); }
+    else { ctx.beginPath();ctx.arc(pt.x,pt.y,pt.size*pt.life,0,Math.PI*2);ctx.fill(); }
+    ctx.restore();
+}
+
+// ═══════════════════════════════════════
+//  DRAW
+// ═══════════════════════════════════════
+function draw(){
+    ctx.clearRect(0,0,W,H);
+
+    // Небо
+    const grad=ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0,currentTheme.skyTop||'#4a9eff');grad.addColorStop(1,currentTheme.skyBot||'#b0e0ff');
+    ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+
+    // Облака
+    ctx.fillStyle='rgba(255,255,255,0.95)';
+    const cloudPeriod=W+500;
+    for(let c of clouds){
+        const raw=c.x - cameraX*0.25;
+        const cx=((raw % cloudPeriod) + cloudPeriod) % cloudPeriod - 150;
+        ctx.save();ctx.translate(cx,c.y);ctx.scale(c.s,c.s);
+        ctx.beginPath();ctx.ellipse(0,0,95,38,0,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.ellipse(50,-18,55,32,0,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+    }
+
+    // ── ПЛАТФОРМЫ ───────────────────────────────────────────
+    for(let p of platforms){
+        if(p.dead) continue;
+        const sx=p.x-cameraX;
+        if(sx>W+150||sx+p.w<-150) continue;
+        ctx.save();
+        ctx.globalAlpha=(p.type==='crumble'&&p.crumbleFalling)?p.crumbleAlpha:1;
+        if(p.type==='crumble'&&p.crumbleFalling&&p.crumbleTimer<12)
+            ctx.translate((Math.random()-0.5)*(12-p.crumbleTimer)*0.6,0);
+
+        if(p.type==='lift'){ctx.shadowColor='#00e5ff';ctx.shadowBlur=14;ctx.fillStyle='#006080';ctx.strokeStyle='#00e5ff';}
+        else if(p.type==='crumble'){ctx.fillStyle='#7d3c00';ctx.strokeStyle='#5a2800';}
+        else if(p.type==='spring'){ctx.fillStyle='#1b4332';ctx.strokeStyle='#52b788';}
+        else if(p.type==='slide'){ctx.shadowColor='#f39c12';ctx.shadowBlur=10;ctx.fillStyle='#7d4e00';ctx.strokeStyle='#f39c12';}
+        else{ctx.fillStyle=currentTheme.plat;ctx.strokeStyle=currentTheme.stroke;}
+        ctx.lineWidth=7;ctx.fillRect(sx,p.y,p.w,p.h);ctx.strokeRect(sx,p.y,p.w,p.h);ctx.shadowBlur=0;
+
+        if(p.type==='lift')         ctx.fillStyle='#00b8d4';
+        else if(p.type==='crumble') ctx.fillStyle='#c0392b';
+        else if(p.type==='spring')  ctx.fillStyle='#52b788';
+        else if(p.type==='slide')   ctx.fillStyle='#f39c12';
+        else                        ctx.fillStyle=currentTheme.grass;
+        ctx.fillRect(sx,p.y-10,p.w,14);
+
+        if(p.type==='lift'){ctx.fillStyle='#00e5ff';ctx.font='bold 18px sans-serif';ctx.textAlign='center';ctx.fillText('↕',sx+p.w/2,p.y+22);}
+        // Стрелки на slide-платформе ←→
+        if(p.type==='slide'){ctx.fillStyle='#f39c12';ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('←→',sx+p.w/2,p.y+22);}
+        if(p.type==='crumble'){ctx.strokeStyle='rgba(255,160,0,0.85)';ctx.lineWidth=2;[0.2,0.45,0.7,0.88].forEach(f=>{ctx.beginPath();ctx.moveTo(sx+p.w*f,p.y);ctx.lineTo(sx+p.w*f+8,p.y+p.h);ctx.stroke();});}
+
+        // Батут
+        if(p.type==='spring'){
+            const postH=22,postW=8,margin2=14,n=3;
+            ctx.fillStyle='#74c69d';
+            ctx.fillRect(sx+margin2-postW/2,p.y-postH,postW,postH);
+            ctx.fillRect(sx+p.w-margin2-postW/2,p.y-postH,postW,postH);
+            const onSp=!player.dead&&player.grounded&&player.y+player.size>=p.y-2&&player.x+player.size>sx&&player.x<sx+p.w;
+            const sag=onSp?8:2;
+            const lx=sx+margin2,rx=sx+p.w-margin2,ty=p.y-postH;
+            ctx.beginPath();ctx.moveTo(lx,ty);ctx.quadraticCurveTo((lx+rx)/2,ty+sag,rx,ty);ctx.strokeStyle='#b7e4c7';ctx.lineWidth=5;ctx.stroke();
+            ctx.beginPath();ctx.moveTo(lx,ty);ctx.quadraticCurveTo((lx+rx)/2,ty+sag,rx,ty);ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=2;ctx.stroke();
+            ctx.strokeStyle='#52b788';ctx.lineWidth=2;
+            for(let i=0;i<n;i++){const fx=(i+1)/(n+1);const bx2=lx+(rx-lx)*fx;const bezY=ty+2*sag*fx*(1-fx)+sag*fx*fx;ctx.beginPath();ctx.moveTo(bx2,p.y);ctx.lineTo(bx2,bezY);ctx.stroke();}
+        }
+
+        // Монеты лифта и слайда (хранят coinItems с relX)
+        if(p.type==='lift'||p.type==='slide'){
+            for(let c of p.coinItems){
+                if(c.collected) continue;
+                const cx2=sx+c.relX,cy2=p.y-28,bounce=Math.sin(performance.now()/300+c.relX)*4;
+                ctx.save();ctx.shadowColor='#f1c40f';ctx.shadowBlur=8;ctx.fillStyle='#f1c40f';ctx.strokeStyle='#e67e22';ctx.lineWidth=3;
+                ctx.beginPath();ctx.arc(cx2,cy2+bounce,10,0,Math.PI*2);ctx.fill();ctx.stroke();
+                ctx.fillStyle='#fff8';ctx.beginPath();ctx.arc(cx2-3,cy2+bounce-3,4,0,Math.PI*2);ctx.fill();ctx.restore();
+            }
+        }
+
+        ctx.restore();
+    }
+
+    // ── Свободные монеты (под бустерами) ────────────────────
+    for(let c of freeCoins){
+        if(c.collected) continue;
+        const cx2=c.x-cameraX, cy2=c.y;
+        if(cx2<-20||cx2>W+20) continue;
+        const bounce=Math.sin(performance.now()/300+c.x)*4;
+        ctx.save();
+        ctx.shadowColor='#f1c40f';ctx.shadowBlur=8;
+        ctx.fillStyle='#f1c40f';ctx.strokeStyle='#e67e22';ctx.lineWidth=3;
+        ctx.beginPath();ctx.arc(cx2,cy2+bounce,10,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#fff8';ctx.beginPath();ctx.arc(cx2-3,cy2+bounce-3,4,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+    }
+
+    // ── Бустеры (поверх монет) ───────────────────────────────
+    for(let p of platforms){
+        if(p.dead) continue;
+        const sx=p.x-cameraX;
+        if(sx>W+150||sx+p.w<-150) continue;
+        if(!p.booster||p.booster.collected) continue;
+        const bx=sx+p.booster.relX,by=p.y-36,pulse=0.85+Math.sin(performance.now()/200)*0.15;
+        let bgColor,icon;
+        if(p.booster.type==='jump'){bgColor='#00bcd4';icon='⚡';}
+        else if(p.booster.type==='speed'){bgColor='#ff9800';icon='🚀';}
+        else{bgColor='#8bc34a';icon='🛡️';}
+        ctx.save();ctx.translate(bx,by);ctx.scale(pulse,pulse);ctx.shadowColor=bgColor;ctx.shadowBlur=14;ctx.fillStyle=bgColor;
+        ctx.beginPath();ctx.roundRect(-16,-16,32,32,8);ctx.fill();
+        ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(icon,0,1);ctx.restore();
+    }
+
+    // ── #4 МИНЫ — маленькие, шипы острые наружу ─────────────
+    for(let h of hazards){
+        const hx=h.x-cameraX;
+        if(hx+h.r*2<-60||hx-h.r>W+60) continue;
+        const cx=hx+h.r, cy=h.y;
+        ctx.save(); ctx.translate(cx,cy);
+
+        // Тело — плоский цвет (нет gradients/shadows)
+        ctx.fillStyle='#2a2a2a';
+        ctx.beginPath();ctx.arc(0,0,h.r,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='#555';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.arc(0,0,h.r,0,Math.PI*2);ctx.stroke();
+
+        // Сварной шов
+        ctx.strokeStyle='#444';ctx.lineWidth=1;
+        ctx.beginPath();ctx.arc(0,0,h.r*0.65,0,Math.PI*2);ctx.stroke();
+
+        // Все штоки — один beginPath/stroke
+        ctx.rotate(h.phase);
+        const sc=12, r=h.r, r2=r+8;
+        ctx.strokeStyle='#888';ctx.lineWidth=2;
+        ctx.beginPath();
+        for(let i=0;i<sc;i++){
+            const a=(Math.PI*2/sc)*i;
+            ctx.moveTo(Math.cos(a)*r, Math.sin(a)*r);
+            ctx.lineTo(Math.cos(a)*r2, Math.sin(a)*r2);
+        }
+        ctx.stroke();
+
+        // Все острия — один beginPath/fill
+        ctx.fillStyle='#aaa';
+        ctx.beginPath();
+        for(let i=0;i<sc;i++){
+            const a=(Math.PI*2/sc)*i;
+            const ix=Math.cos(a),iy=Math.sin(a);
+            ctx.moveTo(ix*r2+iy*2.5,  iy*r2-ix*2.5);
+            ctx.lineTo(ix*r2-iy*2.5,  iy*r2+ix*2.5);
+            ctx.lineTo(ix*(r2+6),     iy*(r2+6));
+        }
+        ctx.fill();
+
+        // Детонатор
+        ctx.fillStyle='#e74c3c';
+        ctx.beginPath();ctx.arc(0,0,h.r*0.2,0,Math.PI*2);ctx.fill();
+
+        ctx.restore();
+    }
+
+    // ── ЧАСТИЦЫ ─────────────────────────────────────────────
+    for(let pt of particles) drawParticle(pt);
+
+    // pop кольцо
+    if(player.dead&&player.deathAnim?.type==='pop'&&player.deathAnim?.ring){
+        const rng=player.deathAnim.ring;
+        ctx.save();ctx.globalAlpha=rng.alpha;ctx.strokeStyle=currentPlayerColor;ctx.lineWidth=4;ctx.shadowColor=currentPlayerColor;ctx.shadowBlur=16;
+        ctx.beginPath();ctx.arc(player.deathAnim.x,player.deathAnim.y,rng.r,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+
+    // ── ФИГУРА ──────────────────────────────────────────────
+    if(!player.dead){
+        const s=player.size;
+        // Оранжевый ghost-trail ускорения (хвост строго левее, на текущей высоте)
+        if(speedTrailBuf.length>0){
+            for(let i=0;i<speedTrailBuf.length;i++){
+                const age=(i+1)/speedTrailBuf.length; // 0=старая, 1=новая
+                ctx.save();
+                ctx.globalAlpha=age*0.42;
+                const tf = speedTrailBuf[i];
+				ctx.translate(tf.x - cameraX + s/2, tf.y + s/2);
+				ctx.rotate(tf.r);	
+                ctx.fillStyle='#ff9800';
+                const gs=s*(0.55+age*0.3);
+                if(currentShape==='square'){ctx.fillRect(-gs/2,-gs/2,gs,gs);}
+                else if(currentShape==='circle'){ctx.beginPath();ctx.arc(0,0,gs/2,0,Math.PI*2);ctx.fill();}
+                else if(currentShape==='triangle'){ctx.beginPath();ctx.moveTo(0,-gs/2);ctx.lineTo(gs/2,gs/2);ctx.lineTo(-gs/2,gs/2);ctx.closePath();ctx.fill();}
+                else if(currentShape==='diamond'){ctx.beginPath();ctx.moveTo(0,-gs/2);ctx.lineTo(gs/2,0);ctx.lineTo(0,gs/2);ctx.lineTo(-gs/2,0);ctx.closePath();ctx.fill();}
+                ctx.restore();
+            }
+        }
+		// ── АУРА супер-прыжка — едва заметное свечение вокруг фигуры
+		if(player.superJumpTimer>0){
+			const pulse = 0.06 + Math.sin(performance.now()/120)*0.03;
+			ctx.save();
+			ctx.globalAlpha = pulse;
+			ctx.fillStyle   = '#00e5ff';
+			ctx.beginPath();
+			ctx.arc(player.x+s/2, player.y+s/2, s*0.58, 0, Math.PI*2);
+			ctx.fill();
+			ctx.restore();
+		}
+        // Голубой ghost-trail супер-прыжка
+        if(trailBuf.length>0){
+            for(let i=0;i<trailBuf.length;i++){
+                const tf=trailBuf[i];
+                const age=i/trailBuf.length; // 0=старая, 1=новая
+                ctx.save();
+                ctx.globalAlpha=age*0.45;
+                ctx.translate(tf.x+s/2, tf.y+s/2);
+                ctx.rotate(tf.r);
+                ctx.fillStyle='#00e5ff';
+                // Рисуем ту же форму что и фигура, чуть меньше
+                const gs=s*(0.55+age*0.3);
+                if(currentShape==='square'){ctx.fillRect(-gs/2,-gs/2,gs,gs);}
+                else if(currentShape==='circle'){ctx.beginPath();ctx.arc(0,0,gs/2,0,Math.PI*2);ctx.fill();}
+                else if(currentShape==='triangle'){ctx.beginPath();ctx.moveTo(0,-gs/2);ctx.lineTo(gs/2,gs/2);ctx.lineTo(-gs/2,gs/2);ctx.closePath();ctx.fill();}
+                else if(currentShape==='diamond'){ctx.beginPath();ctx.moveTo(0,-gs/2);ctx.lineTo(gs/2,0);ctx.lineTo(0,gs/2);ctx.lineTo(-gs/2,0);ctx.closePath();ctx.fill();}
+                ctx.restore();
+            }
+        }
+        ctx.save();ctx.translate(player.x+s/2,player.y+s/2);ctx.rotate(player.rotation);
+        if(player.shield){
+
+			const pulse = 0.45 + Math.sin(performance.now()/140)*0.15;
+
+			ctx.save();
+
+			// внутренняя полупрозрачная аура
+			ctx.globalAlpha = 0.25;
+			ctx.fillStyle   = '#8bc34a';
+			ctx.beginPath();
+			ctx.arc(0,0,s*0.70,0,Math.PI*2);
+			ctx.fill();
+
+			// внешнее кольцо
+			ctx.globalAlpha = pulse;
+			ctx.strokeStyle = '#8bc34a';
+			ctx.lineWidth   = 5;
+			ctx.shadowColor = '#8bc34a';
+			ctx.shadowBlur  = 22;
+
+			ctx.beginPath();
+			ctx.arc(0,0,s*0.80,0,Math.PI*2);
+			ctx.stroke();
+
+			ctx.restore();
+		}
+		// ── лёгкое свечение супер-прыжка через shadowBlur ──
+		if(player.superJumpTimer>0){
+			ctx.save();
+			ctx.shadowColor = '#00e5ff';
+			ctx.shadowBlur  = 14;
+		}
+        ctx.fillStyle=currentPlayerColor;
+        if(currentShape==='square'){ctx.fillRect(-s/2,-s/2,s,s);}
+        else if(currentShape==='circle'){ctx.beginPath();ctx.arc(0,0,s/2,0,Math.PI*2);ctx.fill();}
+        else if(currentShape==='triangle'){ctx.beginPath();ctx.moveTo(0,-s/2);ctx.lineTo(s/2,s/2);ctx.lineTo(-s/2,s/2);ctx.closePath();ctx.fill();}
+        else if(currentShape==='diamond'){ctx.beginPath();ctx.moveTo(0,-s/2);ctx.lineTo(s/2,0);ctx.lineTo(0,s/2);ctx.lineTo(-s/2,0);ctx.closePath();ctx.fill();}
+        // Закрываем save для shadowBlur супер-прыжка (если был открыт)
+        if(player.superJumpTimer>0){ ctx.restore(); }
+        ctx.fillStyle='#fff';
+        ctx.beginPath();ctx.arc(-s*0.22,-s*0.18,s*0.11,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc( s*0.22,-s*0.18,s*0.11,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#222';
+        ctx.beginPath();ctx.arc(-s*0.22,-s*0.18,s*0.05,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc( s*0.22,-s*0.18,s*0.05,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='#222';ctx.lineWidth=s*0.05;ctx.beginPath();ctx.arc(0,s*0.12,s*0.19,0.25,Math.PI-0.25);ctx.stroke();ctx.shadowBlur = 0;
+        ctx.restore();
+    }
+
+    // ── HUD: бустеры ────────────────────────────────────────
+    let hudY=70;
+    if(player.speedBoostTimer>0){
+        const f=player.speedBoostTimer/SPEED_BOOST_DUR;
+        ctx.fillStyle='#ff9800';ctx.fillRect(16,hudY,120*f,8);ctx.strokeStyle='#ff9800';ctx.lineWidth=2;ctx.strokeRect(16,hudY,120,8);
+        ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';ctx.fillText('🚀',16,hudY+20);hudY+=30;
+    }
+    if(player.superJumpTimer>0){
+        const f=player.superJumpTimer/300;
+        ctx.fillStyle='#00bcd4';ctx.fillRect(16,hudY,120*f,8);ctx.strokeStyle='#00bcd4';ctx.lineWidth=2;ctx.strokeRect(16,hudY,120,8);
+        ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';ctx.fillText('⚡',16,hudY+20);hudY+=30;
+    }
+    if(player.shield){
+        const f=player.shieldTimer/400;
+        ctx.fillStyle='#8bc34a';ctx.fillRect(16,hudY,120*f,8);ctx.strokeStyle='#8bc34a';ctx.lineWidth=2;ctx.strokeRect(16,hudY,120,8);
+        ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';ctx.fillText('🛡️',16,hudY+20);
+    }
+
+    // Затемнение при паузе (рисуется поверх всего на canvas)
+    if(paused){
+        ctx.save();ctx.fillStyle='rgba(0,0,0,0.45)';ctx.fillRect(0,0,W,H);ctx.restore();
+    }
+}
+
+// ═══════════════════════════════════════
+//  LOOP  — один экземпляр, управляется loopRunning
+// ═══════════════════════════════════════
+function loop(){
+    update();
+    draw();
+    // Продолжаем всегда пока есть хоть что-то живое
+    if(loopRunning){
+        requestAnimationFrame(loop);
+    }
+}
+
+// ═══════════════════════════════════════
+//  INPUT
+// ═══════════════════════════════════════
+window.addEventListener('keydown',e=>{
+    if(e.key===' '){e.preventDefault();jump();}
+    if(e.key==='Escape'&&gameRunning) togglePause();
+});
+canvas.addEventListener('mousedown',e=>{
+    // Клик по canvas прыгает (не по кнопке паузы)
+    jump();
+});
+canvas.addEventListener('touchstart',e=>{e.preventDefault();jump();});
+</script>
+</body>
+</html>
