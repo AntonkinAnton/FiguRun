@@ -11,7 +11,7 @@ const BOUNCE_VY       = -28;
 const SPEED_BOOST_ADD = 3.5;
 const SPEED_BOOST_DUR = 120;
 const GROW_SCALE      = 4;    // во сколько раз увеличивается фигура
-const GROW_DUR        = 1480;  // кадров действия бонуса
+const GROW_DUR        = 480;  // кадров действия бонуса
 
 const TRAIL_LEN = 8;
 
