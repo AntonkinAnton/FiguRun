@@ -35,16 +35,16 @@ function _crushMine(h, hx){
     }
 }
 
-function update(){
+function update(dt=1){
     if(paused) return;
 
     // Анимация смерти и частицы (работают даже после смерти)
     if(player.dead){
         if(player.deathAnim){
-            player.deathAnim.t++;
+            player.deathAnim.t += dt;
             if(player.deathAnim.type==='pop'&&player.deathAnim.ring){
                 const rng=player.deathAnim.ring;
-                rng.r+=5; rng.alpha=Math.max(0,1-rng.r/rng.maxR);
+                rng.r+=5*dt; rng.alpha=Math.max(0,1-rng.r/rng.maxR);
             }
         }
     }
@@ -52,13 +52,13 @@ function update(){
     // Частицы всегда тикают
     for(let i=particles.length-1;i>=0;i--){
         const pt=particles[i];
-        pt.x+=pt.vx; pt.y+=pt.vy;
-        pt.vy+=pt.shape==='drop'?0.25:0.18;
-        pt.life-=pt.decay;
+        pt.x+=pt.vx*dt; pt.y+=pt.vy*dt;
+        pt.vy+=(pt.shape==='drop'?0.25:0.18)*dt;
+        pt.life-=pt.decay*dt;
         if(pt.life<=0) particles.splice(i,1);
     }
 
-    // Лифты и шарики анимируются всегда
+    // Лифты и слайды используют performance.now() — независимы от dt
     const t=performance.now()/1000;
     for(let p of platforms){
         if(p.type==='lift'){
@@ -73,7 +73,7 @@ function update(){
             p._dx=p.x-oldX;
         }
     }
-    for(let h of hazards){ h.phase+=0.04; h.y+=Math.sin(t*2+h.bobPhase)*0.4; }
+    for(let h of hazards){ h.phase+=0.04*dt; }
 
     if(!gameRunning||player.dead) return;
 
@@ -82,20 +82,19 @@ function update(){
     const boost  =player.speedBoostTimer>0?SPEED_BOOST_ADD:0;
     currentSpeed =natural+boost;
 
-    if(player.shieldTimer>0)    player.shieldTimer--;
-    if(player.shieldTimer===0)  player.shield=false;
-    if(player.superJumpTimer>0) player.superJumpTimer--;
-    if(player.speedBoostTimer>0)player.speedBoostTimer--;
-    if(player.growTimer>0)      player.growTimer--;
+    if(player.shieldTimer>0)    player.shieldTimer-=dt;
+    if(player.shieldTimer<=0)   player.shield=false;
+    if(player.superJumpTimer>0) player.superJumpTimer-=dt;
+    if(player.speedBoostTimer>0)player.speedBoostTimer-=dt;
+    if(player.growTimer>0)      player.growTimer-=dt;
 
     // Плавный масштаб — якорим нижний край (ноги на платформе)
     {
         const target = player.growTimer > 0 ? GROW_SCALE : 1;
-        const speed  = 0.18;
+        const speed  = 1 - Math.pow(1 - 0.18, dt); // frame-rate независимый lerp
         const oldBottom = player.y + player.size * player.growScale;
         player.growScale += (target - player.growScale) * speed;
         if(Math.abs(player.growScale - target) < 0.01) player.growScale = target;
-        // После изменения масштаба возвращаем ноги на то же место
         player.y = oldBottom - player.size * player.growScale;
     }
 
@@ -104,36 +103,56 @@ function update(){
     // Слайд → камера
     if(player.onSlide&&!player.onSlide.dead&&player.grounded) cameraX+=player.onSlide._dx;
 
-    // Физика
-    player.vy+=GRAVITY; player.y+=player.vy;
-    cameraX+=currentSpeed; score+=currentSpeed/3.8;
+    // Физика + коллизия через субшаги — защита от туннелинга при фризах
+    // Максимум 1 субшаг = 0.5 нормального кадра, не более 4 шагов
+    const MAX_STEP = 0.5;
+    const steps = Math.min(Math.ceil(dt / MAX_STEP), 4);
+    const subDt  = dt / steps;
+
+    for(let step=0; step<steps; step++){
+        // Гравитация и движение по Y
+        player.vy += GRAVITY * subDt;
+        player.y  += player.vy * subDt;
+
+        // Коллизия с платформами
+        const effSize = player.size * player.growScale;
+        player.grounded=false; player.onLift=null; player.onSlide=null;
+        for(let p of platforms){
+            if(p.dead) continue;
+            const px=p.x-cameraX;
+            // Нижний край фигуры пересёк верх платформы сверху вниз (vy >= 0)
+            if(player.x+effSize>px && player.x<px+p.w &&
+               player.vy >= 0 &&
+               player.y+effSize >= p.y && player.y+effSize - player.vy*subDt <= p.y+8){
+                player.y=p.y-effSize; player.vy=0; player.grounded=true; player.jumpsLeft=2;
+                if(p.type==='lift')  player.onLift=p;
+                if(p.type==='slide') player.onSlide=p;
+                if(p.type==='spring'){
+                    player.vy=BOUNCE_VY; player.grounded=false;
+                    player.onLift=null; player.onSlide=null; player.jumpsLeft=2;
+                    spawnParticles(player.x+effSize/2, player.y+effSize, '#ff5722', 12);
+                    break;
+                }
+                if(p.type==='crumble'&&!p.crumbleFalling){ p.crumbleFalling=true; p.crumbleTimer=15; p.crumbleAlpha=1; }
+                break;
+            }
+        }
+    }
+
+    // Движение камеры и счёт — один раз за весь кадр
+    cameraX+=currentSpeed*dt; score+=currentSpeed*dt/3.8;
 
     // Ломающиеся
     for(let p of platforms){
         if(p.type==='crumble'&&p.crumbleFalling){
-            p.crumbleTimer--; p.crumbleAlpha=Math.max(0,p.crumbleTimer/15);
+            p.crumbleTimer-=dt; p.crumbleAlpha=Math.max(0,p.crumbleTimer/15);
             if(p.crumbleTimer<=0) p.dead=true;
         }
     }
 
-    // Вращение — замедляется пропорционально growScale²
-    if(player.grounded) player.rotation += currentSpeed * 0.092 / player.growScale;
-
-    // Коллизия
-    const effSize = player.size * player.growScale;  // эффективный размер
-    player.grounded=false; player.onLift=null; player.onSlide=null;
-    for(let p of platforms){
-        if(p.dead) continue;
-        const px=p.x-cameraX;
-        if(player.x+effSize>px&&player.x<px+p.w&&player.y+effSize>p.y&&player.y+effSize-player.vy<=p.y+8){
-            player.y=p.y-effSize; player.vy=0; player.grounded=true; player.jumpsLeft=2;
-            if(p.type==='lift')  player.onLift=p;
-            if(p.type==='slide') player.onSlide=p;
-            if(p.type==='spring'){ player.vy=BOUNCE_VY;player.grounded=false;player.onLift=null;player.onSlide=null;player.jumpsLeft=2;spawnParticles(player.x+effSize/2,player.y+effSize,'#ff5722',12);break; }
-            if(p.type==='crumble'&&!p.crumbleFalling){ p.crumbleFalling=true;p.crumbleTimer=15;p.crumbleAlpha=1; }
-            break;
-        }
-    }
+    // Вращение
+    const effSize = player.size * player.growScale;
+    if(player.grounded) player.rotation += currentSpeed * 0.092 * dt / player.growScale;
 
     // Визуальное смещение фигуры влево при росте (совпадает с render.js)
     const camOffset = (player.growScale - 1) * player.size * 0.4;
@@ -145,7 +164,8 @@ function update(){
     for(let i=hazards.length-1;i>=0;i--){
         const h=hazards[i];
         const hx=h.x-cameraX;
-        const dist=Math.hypot(hx+h.r-(figLeft+effSize/2), h.y-(player.y+effSize/2));
+        const bob=Math.sin(performance.now()/500+h.bobPhase)*5;
+        const dist=Math.hypot(hx+h.r-(figLeft+effSize/2), (h.y+bob)-(player.y+effSize/2));
         if(dist < h.r+effSize*0.35){
             if(player.growTimer>0){
                 // Большая фигура давит мину — щит не мешает
@@ -223,8 +243,15 @@ function update(){
 }
 
 // ── LOOP ───────────────────────────────
-function loop(){
-    update();
+let _lastTime = 0;
+
+function loop(timestamp){
+    // dt нормирован на 60fps: при 60fps=1.0, при 90fps≈0.667, при 120fps=0.5
+    const elapsed = _lastTime ? Math.min(timestamp - _lastTime, 50) : 16.667;
+    _lastTime = timestamp;
+    const dt = elapsed / 16.667;
+
+    update(dt);
     draw();
     if(loopRunning) requestAnimationFrame(loop);
 }

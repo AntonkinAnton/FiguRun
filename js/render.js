@@ -123,7 +123,8 @@ function draw() {
     for (let h of hazards) {
         const hx = h.x - cameraX;
         if (hx + h.r * 2 < -60 || hx - h.r > W + 60) continue;
-        const cx = hx + h.r, cy = h.y;
+        const bob = Math.sin(performance.now() / 500 + h.bobPhase) * 5;
+        const cx = hx + h.r, cy = h.y + bob;
         ctx.save(); ctx.translate(cx, cy);
         ctx.fillStyle = '#2a2a2a';
         ctx.beginPath(); ctx.arc(0, 0, h.r, 0, Math.PI * 2); ctx.fill();
