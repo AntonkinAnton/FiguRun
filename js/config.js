@@ -12,7 +12,7 @@ const SPEED_BOOST_ADD = 3.5;
 const SPEED_BOOST_DUR = 120;
 const GROW_SCALE      = 3.5;    // во сколько раз увеличивается фигура (обычный grow)
 const GROW_DUR        = 10480;    // кадров действия бонуса
-const MEGA_GROW_SCALE = 12;     // размер при двойном grow
+const MEGA_GROW_SCALE = 14;     // размер при двойном grow
 const MEGA_GROW_DUR   = 1300;    // кадров действия мега-бонуса
 
 const TRAIL_LEN = 8;

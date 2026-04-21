@@ -173,8 +173,11 @@ function draw() {
         const gs = player.growScale;           // текущий масштаб (1..4)
         const es = s * gs;                     // эффективный размер
 
-        // Смещение камеры при росте — фигура остаётся у левого края
-        const camOffset = (gs - 1) * s * 0.4;
+        // Смещение при росте — фигура остаётся у левого края.
+        // При megaGrow прячем часть фигуры за левый край экрана.
+        const camOffset = player.megaGrow
+            ? (gs - 1) * s * 0.6
+            : (gs - 1) * s * 0.4;
 
         // Оранжевый ghost-trail ускорения
         if (speedTrailBuf.length > 0) {

@@ -147,15 +147,15 @@ function update(dt=1){
         const effSize = player.size * player.growScale;
         player.grounded=false; player.onLift=null; player.onSlide=null;
 
-        // MegaGrow: бесконечный пол в нижней части экрана
+        // MegaGrow: бесконечный пол — ноги ровно на дне экрана
         if(player.megaGrow){
-            const megaFloor = H - effSize * 0.0001;  // ноги фигуры у нижнего края
+            const megaFloor = H;
             if(player.y + effSize >= megaFloor){
                 player.y = megaFloor - effSize;
                 player.vy = 0; player.grounded = true; player.jumpsLeft = 2;
             }
             // Уничтожаем все платформы которые задеты фигурой
-            const camOffset = (player.growScale - 1) * player.size * 0.4;
+            const camOffset = (player.growScale - 1) * player.size * 0.54;
             const fLeft = player.x - camOffset;
             for(let p of platforms){
                 if(p.dead) continue;
@@ -206,8 +206,9 @@ function update(dt=1){
     if(player.grounded) player.rotation += currentSpeed * 0.092 * dt / player.growScale;
 
     // Визуальное смещение фигуры влево при росте (совпадает с render.js)
-    const camOffset = (player.growScale - 1) * player.size * 0.4;
-    // Экранный левый край фигуры с учётом смещения
+    const camOffset = player.megaGrow
+        ? (player.growScale - 1) * player.size * 0.6
+        : (player.growScale - 1) * player.size * 0.4;
     const figLeft = player.x - camOffset;
 
     // Мины — коллизия
