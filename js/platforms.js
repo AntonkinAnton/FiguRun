@@ -167,7 +167,7 @@ function resetGame(){
     Object.assign(player, {
         x:110, y:620, vy:0, rotation:0, grounded:true, jumpsLeft:2,
         shield:false, shieldTimer:0, superJumpTimer:0, speedBoostTimer:0,
-        growTimer:0, growScale:1, shrinkGrace:0,
+        growTimer:0, growScale:1, shrinkGrace:0, megaGrow:false,
         onLift:null, prevLiftY:0, onSlide:null, dead:false, deathAnim:null
     });
 

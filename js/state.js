@@ -15,6 +15,7 @@ let player = {
     superJumpTimer:0, speedBoostTimer:0,
     growTimer:0, growScale:1,
     shrinkGrace:0,          // неуязвимость после окончания grow
+    megaGrow:false,         // режим двойного grow
     onLift:null, prevLiftY:0,
     onSlide:null,
     dead:false, deathAnim:null

@@ -3,6 +3,26 @@
 //  Загружается последним
 // ═══════════════════════════════════════
 
+// Разлёт платформы на куски при megaGrow
+function _smashPlatform(p){
+    const sx = p.x - cameraX;
+    const count = 8 + Math.floor(Math.random()*6);
+    for(let i=0;i<count;i++){
+        const bx = sx + Math.random()*p.w;
+        const by = p.y + Math.random()*p.h;
+        const a  = Math.random()*Math.PI*2;
+        const spd= 3 + Math.random()*6;
+        particles.push({
+            x:bx, y:by,
+            vx:Math.cos(a)*spd, vy:Math.sin(a)*spd - 2,
+            life:1, decay:0.022+Math.random()*0.018,
+            size:4+Math.random()*8,
+            color: i%3===0 ? '#27ae60' : (i%3===1 ? '#3d250f' : '#8B5E3C'),
+            shape:'square'
+        });
+    }
+}
+
 // Уничтожение мины большой фигурой — случайная анимация из 5 типов, чёрные частицы
 function _crushMine(h, hx){
     const mx = hx + h.r, my = h.y;
@@ -89,13 +109,18 @@ function update(dt=1){
     const wasGrowing = player.growTimer > 0;
     if(player.growTimer>0)      player.growTimer-=dt;
     // Запускаем grace-период сразу как growTimer иссяк
-    if(wasGrowing && player.growTimer<=0) player.shrinkGrace = 60;
+    if(wasGrowing && player.growTimer<=0){
+        player.shrinkGrace = 60;
+        player.megaGrow    = false;
+    }
     if(player.shrinkGrace>0)    player.shrinkGrace-=dt;
 
     // Плавный масштаб — якорим нижний край (ноги на платформе)
     {
-        const target = player.growTimer > 0 ? GROW_SCALE : 1;
-        const speed  = 1 - Math.pow(1 - 0.18, dt); // frame-rate независимый lerp
+        const target = player.growTimer > 0
+            ? (player.megaGrow ? MEGA_GROW_SCALE : GROW_SCALE)
+            : 1;
+        const speed  = 1 - Math.pow(1 - 0.18, dt);
         const oldBottom = player.y + player.size * player.growScale;
         player.growScale += (target - player.growScale) * speed;
         if(Math.abs(player.growScale - target) < 0.01) player.growScale = target;
@@ -121,24 +146,46 @@ function update(dt=1){
         // Коллизия с платформами
         const effSize = player.size * player.growScale;
         player.grounded=false; player.onLift=null; player.onSlide=null;
-        for(let p of platforms){
-            if(p.dead) continue;
-            const px=p.x-cameraX;
-            // Нижний край фигуры пересёк верх платформы сверху вниз (vy >= 0)
-            if(player.x+effSize>px && player.x<px+p.w &&
-               player.vy >= 0 &&
-               player.y+effSize >= p.y && player.y+effSize - player.vy*subDt <= p.y+8){
-                player.y=p.y-effSize; player.vy=0; player.grounded=true; player.jumpsLeft=2;
-                if(p.type==='lift')  player.onLift=p;
-                if(p.type==='slide') player.onSlide=p;
-                if(p.type==='spring'){
-                    player.vy=BOUNCE_VY; player.grounded=false;
-                    player.onLift=null; player.onSlide=null; player.jumpsLeft=2;
-                    spawnParticles(player.x+effSize/2, player.y+effSize, '#ff5722', 12);
+
+        // MegaGrow: бесконечный пол в нижней части экрана
+        if(player.megaGrow){
+            const megaFloor = H - effSize * 0.0001;  // ноги фигуры у нижнего края
+            if(player.y + effSize >= megaFloor){
+                player.y = megaFloor - effSize;
+                player.vy = 0; player.grounded = true; player.jumpsLeft = 2;
+            }
+            // Уничтожаем все платформы которые задеты фигурой
+            const camOffset = (player.growScale - 1) * player.size * 0.4;
+            const fLeft = player.x - camOffset;
+            for(let p of platforms){
+                if(p.dead) continue;
+                const px = p.x - cameraX;
+                if(fLeft + effSize > px && fLeft < px + p.w &&
+                   player.y < p.y + p.h && player.y + effSize > p.y){
+                    _smashPlatform(p);
+                    p.dead = true;
+                }
+            }
+        } else {
+            for(let p of platforms){
+                if(p.dead) continue;
+                const px=p.x-cameraX;
+                // Нижний край фигуры пересёк верх платформы сверху вниз (vy >= 0)
+                if(player.x+effSize>px && player.x<px+p.w &&
+                   player.vy >= 0 &&
+                   player.y+effSize >= p.y && player.y+effSize - player.vy*subDt <= p.y+8){
+                    player.y=p.y-effSize; player.vy=0; player.grounded=true; player.jumpsLeft=2;
+                    if(p.type==='lift')  player.onLift=p;
+                    if(p.type==='slide') player.onSlide=p;
+                    if(p.type==='spring'){
+                        player.vy=BOUNCE_VY; player.grounded=false;
+                        player.onLift=null; player.onSlide=null; player.jumpsLeft=2;
+                        spawnParticles(player.x+effSize/2, player.y+effSize, '#ff5722', 12);
+                        break;
+                    }
+                    if(p.type==='crumble'&&!p.crumbleFalling){ p.crumbleFalling=true; p.crumbleTimer=15; p.crumbleAlpha=1; }
                     break;
                 }
-                if(p.type==='crumble'&&!p.crumbleFalling){ p.crumbleFalling=true; p.crumbleTimer=15; p.crumbleAlpha=1; }
-                break;
             }
         }
     }
