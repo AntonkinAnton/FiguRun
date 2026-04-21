@@ -169,7 +169,7 @@ function draw() {
 
     // ── ФИГУРА ──────────────────────────────────────────────
     if (!player.dead) {
-        const s  = player.size;
+        const s = player.size;
         const gs = player.growScale;           // текущий масштаб (1..4)
         const es = s * gs;                     // эффективный размер
 
@@ -230,10 +230,25 @@ function draw() {
         const figCX = player.x + es / 2 - camOffset;
         const figCY = player.y + es / 2;
 
+        // Мигание перед окончанием grow (последние 90 кадров) и во время grace-периода
+        let figAlpha = 1;
+
+        if (player.growTimer > 0 && player.growTimer < 90) {
+            const period = 600; // полный цикл (мс)
+            const wave = Math.sin(performance.now() * (2 * Math.PI / period));
+            figAlpha = wave > 0 ? 1 : 0.25;
+
+        } else if (player.shrinkGrace > 0) {
+            const period = 600;
+            const wave = Math.sin(performance.now() * (2 * Math.PI / period));
+            figAlpha = wave > 0 ? 0.9 : 0.2;
+        }
+
         ctx.save();
+        ctx.globalAlpha = figAlpha;
         ctx.translate(figCX, figCY);
         ctx.rotate(player.rotation);
-        ctx.scale(gs, gs);   // масштабируем вокруг центра
+        ctx.scale(gs, gs);
 
         // Щит
         if (player.shield) {

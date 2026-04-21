@@ -14,6 +14,7 @@ let player = {
     shield:false, shieldTimer:0,
     superJumpTimer:0, speedBoostTimer:0,
     growTimer:0, growScale:1,
+    shrinkGrace:0,          // неуязвимость после окончания grow
     onLift:null, prevLiftY:0,
     onSlide:null,
     dead:false, deathAnim:null
