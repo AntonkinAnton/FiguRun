@@ -11,9 +11,9 @@ const BOUNCE_VY       = -28;
 const SPEED_BOOST_ADD = 3.5;
 const SPEED_BOOST_DUR = 120;
 const GROW_SCALE      = 3.5;    // во сколько раз увеличивается фигура (обычный grow)
-const GROW_DUR        = 10480;    // кадров действия бонуса
-const MEGA_GROW_SCALE = 14;     // размер при двойном grow
-const MEGA_GROW_DUR   = 800;    // кадров действия мега-бонуса
+const GROW_DUR        = 600;    // кадров действия бонуса
+const MEGA_GROW_SCALE = 13;     // размер при двойном grow
+const MEGA_GROW_DUR   = 600;    // кадров действия мега-бонуса
 
 const TRAIL_LEN = 8;
 
@@ -29,6 +29,19 @@ const themes = [
 const clouds = [{x:80,y:140,s:1.1},{x:320,y:210,s:0.85},{x:480,y:110,s:1.3},{x:720,y:250,s:0.9}];
 
 const boosterTypes = ['jump','speed','shield','grow'];
+
+// ── НАСТРОЙКИ БУСТЕРОВ ──────────────────
+// chance        — вес при случайном выборе (относительный, не обязан быть в сумме 1)
+// startDist     — с какой дистанции (м) начинает появляться
+// maxPerRun     — максимум за один ран (0 = без ограничений)
+// followChance  — для 'grow': шанс (0..1) что второй grow появится вслед за первым
+// followInterval— для 'grow': через сколько платформ появится второй grow
+const BOOSTER_CONFIG = {
+    jump:  { chance: 1.0, startDist:   0, maxPerRun: 0 },
+    speed: { chance: 1.0, startDist:   0, maxPerRun: 0 },
+    shield:{ chance: 1.0, startDist:   0, maxPerRun: 0 },
+    grow:  { chance: 1.0, startDist: 0, maxPerRun: 3, followChance: 0.8, followInterval: 3 },
+};
 
 const DEATH_TYPES  = ['explode','dissolve','pop','melt','unravel'];
 const DEATH_TITLES = {

@@ -5,6 +5,7 @@
 
 // Разлёт платформы на куски при megaGrow
 function _smashPlatform(p){
+    if(navigator.vibrate) navigator.vibrate(30)
     const sx = p.x - cameraX;
     const count = 8 + Math.floor(Math.random()*6);
     for(let i=0;i<count;i++){
@@ -25,6 +26,8 @@ function _smashPlatform(p){
 
 // Уничтожение мины большой фигурой — случайная анимация из 5 типов, чёрные частицы
 function _crushMine(h, hx){
+    // Лёгкая вибрация на мобильных
+    if(navigator.vibrate) navigator.vibrate(30);
     const mx = hx + h.r, my = h.y;
     const type = DEATH_TYPES[Math.floor(Math.random()*DEATH_TYPES.length)];
     if(type==='explode'){
@@ -120,6 +123,7 @@ function update(dt=1){
         player.megaGrow = false;
     }
     if(player.shrinkGrace>0)    player.shrinkGrace-=dt;
+    if(screenShake>0)           screenShake = Math.max(0, screenShake - dt * 1.2);
 
     // Плавный масштаб — якорим нижний край (ноги на платформе)
     {
@@ -155,19 +159,24 @@ function update(dt=1){
 
         // MegaGrow: бесконечный пол — ноги ровно на дне экрана
         if(player.megaGrow){
-            const megaFloor = H*1.05;
+            const megaFloor = H * 1.05;
             if(player.y + effSize >= megaFloor){
                 player.y = megaFloor - effSize;
+                if(player.vy > 2) screenShake = Math.min(14, player.vy * 0.6); // сотрясение при падении
                 player.vy = 0; player.grounded = true; player.jumpsLeft = 2;
             }
             // Уничтожаем все платформы которые задеты фигурой
-            const camOffset = (player.growScale - 1) * player.size * 0.54;
+            const camOffset = (player.growScale - 1) * player.size * 0.6;
             const fLeft = player.x - camOffset;
             for(let p of platforms){
                 if(p.dead) continue;
                 const px = p.x - cameraX;
                 if(fLeft + effSize > px && fLeft < px + p.w &&
                    player.y < p.y + p.h && player.y + effSize > p.y){
+                    // Монеты lift/slide переносим в freeCoins перед уничтожением
+                    for(let c of p.coinItems){
+                        if(!c.collected) freeCoins.push({x: p.x+c.relX, y: p.y-28, collected:false});
+                    }
                     _smashPlatform(p);
                     p.dead = true;
                 }

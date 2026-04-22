@@ -47,8 +47,34 @@ function decoratePlatform(p){
     if(p.type==='normal'){
         boosterState.platformsSinceLast++;
         if(boosterState.platformsSinceLast >= nextBoosterIn){
-            const avail  = boosterTypes.filter(t=>t!==boosterState.lastType);
-            const picked = avail[Math.floor(Math.random()*avail.length)];
+            // Определяем тип бустера
+            let picked = null;
+
+            // Если стоит флаг followGrow — ставим grow без очереди
+            if(pendingFollowGrow){
+                picked = 'grow';
+                pendingFollowGrow = false;
+            } else {
+                // Фильтруем допустимые: startDist, maxPerRun, не повторяем lastType
+                const avail = boosterTypes.filter(t => {
+                    const cfg = BOOSTER_CONFIG[t];
+                    if(score < cfg.startDist) return false;
+                    if(cfg.maxPerRun > 0 && boosterRunCount[t] >= cfg.maxPerRun) return false;
+                    if(t === boosterState.lastType) return false;
+                    return true;
+                });
+                if(avail.length === 0) return; // ни один бустер не доступен
+
+                // Взвешенный случайный выбор по chance
+                const totalW = avail.reduce((s,t)=>s+BOOSTER_CONFIG[t].chance, 0);
+                let r = Math.random() * totalW;
+                for(const t of avail){
+                    r -= BOOSTER_CONFIG[t].chance;
+                    if(r <= 0){ picked = t; break; }
+                }
+                if(!picked) picked = avail[avail.length-1];
+            }
+
             const myCoins = freeCoins.filter(c=>c.x>=p.x && c.x<=p.x+p.w);
             let rx, tries=0, safe=false;
             do {
@@ -57,9 +83,23 @@ function decoratePlatform(p){
                 tries++;
             } while(!safe && tries<10);
             p.booster = {relX:rx, type:picked, collected:false};
+            boosterRunCount[picked]++;
             boosterState.lastType           = picked;
             boosterState.platformsSinceLast = 0;
             nextBoosterIn = boosterState.minInterval + Math.floor(Math.random()*(boosterState.maxInterval-boosterState.minInterval+1));
+
+            // grow: проверяем followChance для следующего бустера
+            if(picked === 'grow'){
+                const cfg = BOOSTER_CONFIG.grow;
+                if(cfg.maxPerRun === 0 || boosterRunCount.grow < cfg.maxPerRun){
+                    if(Math.random() < cfg.followChance){
+                        pendingFollowGrow = true;
+                        // Выставляем счётчик так, чтобы follow появился через followInterval платформ
+                        const fi = cfg.followInterval ?? 2;
+                        boosterState.platformsSinceLast = nextBoosterIn - fi;
+                    }
+                }
+            }
         }
     }
 }
@@ -185,9 +225,12 @@ function resetGame(){
     currentSpeed=baseSpeed; lastPlatformEnd=720;
     particles=[]; hazards=[]; freeCoins=[];
     trailBuf=[]; speedTrailBuf=[];
+    screenShake = 0;
     MEDALS = buildMedals();
     boosterState = {lastType:null, platformsSinceLast:0, minInterval:4, maxInterval:9};
     nextBoosterIn = 5;
+    boosterRunCount = {jump:0, speed:0, shield:0, grow:0};
+    pendingFollowGrow = false;
 
     platforms = [
         createPlatform(0,   720, 900),

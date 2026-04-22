@@ -14,6 +14,14 @@ function drawParticle(pt) {
 function draw() {
     ctx.clearRect(0, 0, W, H);
 
+    // Сотрясение экрана (megaGrow приземление)
+    if(screenShake > 0){
+        const sx = (Math.random()-0.5) * screenShake * 2;
+        const sy = (Math.random()-0.5) * screenShake * 2;
+        ctx.save();
+        ctx.translate(sx, sy);
+    }
+
     // Небо
     const grad = ctx.createLinearGradient(0, 0, 0, H);
     grad.addColorStop(0, currentTheme.skyTop || '#4a9eff'); grad.addColorStop(1, currentTheme.skyBot || '#b0e0ff');
@@ -368,4 +376,7 @@ function draw() {
     if (paused) {
         ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H); ctx.restore();
     }
+
+    // Закрываем сотрясение экрана
+    if(screenShake > 0) ctx.restore();
 }

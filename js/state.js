@@ -41,6 +41,9 @@ let allTimeCoins = parseInt(localStorage.getItem('cubeRunnerATC')) || 0;
 let trailBuf      = [];
 let speedTrailBuf = [];
 
+// Сотрясение экрана
+let screenShake = 0;
+
 // Loop control
 let loopRunning  = false;
 let gameRunning  = false;
@@ -50,6 +53,10 @@ let lastPlatformEnd = 0;
 // Бустер-трекер
 let boosterState = {lastType:null, platformsSinceLast:0, minInterval:4, maxInterval:9};
 let nextBoosterIn = 5;
+// Счётчики выпадений бустеров за текущий ран
+let boosterRunCount = {jump:0, speed:0, shield:0, grow:0};
+// Флаг: следующий бустер должен быть grow (followChance)
+let pendingFollowGrow = false;
 
 // Визуальные переменные (рандомятся на каждый ран)
 let currentShape       = 'square';
