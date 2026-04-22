@@ -69,6 +69,8 @@ function trySpawnHazardsInGap(x1End,x2Start,y1,y2,noMines=false){
     const gapW=x2Start-x1End;
     if(gapW<70) return;
     if(noMines) return;   // рядом со slide: вообще без мин
+    // За 90 кадров до окончания grow — без мин (игроку нужно приземлиться)
+    if(player.growTimer > 0 && player.growTimer < 90) return;
     const diff=Math.min(score/1500,1);
     // Во время бонуса роста — больше мин (весело давить)
     const growing = player.growTimer > 0;
@@ -87,8 +89,16 @@ function trySpawnHazardsInGap(x1End,x2Start,y1,y2,noMines=false){
 function generateNextPlatform(){
     const last=platforms[platforms.length-1];
     const diff=Math.min(score/3000,3);
-    const gap=65+Math.random()*110+diff*35;
-    const width=110+Math.random()*160;
+
+    // За ~90 кадров до окончания grow — частые широкие платформы для приземления
+    const growEnding = player.growTimer > 0 && player.growTimer < 90;
+    const gap   = growEnding
+        ? 30 + Math.random()*40
+        : 65+Math.random()*110+diff*35;
+    const width = growEnding
+        ? 160 + Math.random()*100
+        : 110+Math.random()*160;
+
     let newY=last.y+(Math.random()-0.5)*160;
     newY=Math.max(420,Math.min(780,newY));
     const newX=last.x+last.w+gap;

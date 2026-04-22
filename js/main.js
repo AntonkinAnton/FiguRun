@@ -111,7 +111,13 @@ function update(dt=1){
     // Запускаем grace-период сразу как growTimer иссяк
     if(wasGrowing && player.growTimer<=0){
         player.shrinkGrace = 60;
-        player.megaGrow    = false;
+        // Подброс вверх только при megaGrow — чтобы попасть на платформу после уменьшения
+        if(player.megaGrow){
+            player.vy = SUPER_JUMP * 1.6;
+            player.grounded = false;
+            player.jumpsLeft = 2;
+        }
+        player.megaGrow = false;
     }
     if(player.shrinkGrace>0)    player.shrinkGrace-=dt;
 
@@ -149,7 +155,7 @@ function update(dt=1){
 
         // MegaGrow: бесконечный пол — ноги ровно на дне экрана
         if(player.megaGrow){
-            const megaFloor = H;
+            const megaFloor = H*1.05;
             if(player.y + effSize >= megaFloor){
                 player.y = megaFloor - effSize;
                 player.vy = 0; player.grounded = true; player.jumpsLeft = 2;
@@ -215,21 +221,24 @@ function update(dt=1){
     // growTimer>0 или growScale>1.05 — давим; shrinkGrace — просто неуязвимы (не давим)
     const growProtected = player.growTimer > 0 || player.growScale > 1.05;
     const mineImmune   = growProtected || player.shrinkGrace > 0 || player.shield;
+    // Визуальный центр фигуры (совпадает с render.js: figCX, figCY)
+    const figCX = figLeft + effSize/2;
+    const figCY = player.y + effSize/2;
+    // Радиус хитбокса — половина эффективного размера (от края до края)
+    const figR  = effSize / 2;
     for(let i=hazards.length-1;i>=0;i--){
         const h=hazards[i];
         const hx=h.x-cameraX;
         const bob=Math.sin(performance.now()/500+h.bobPhase)*5;
-        const dist=Math.hypot(hx+h.r-(figLeft+effSize/2), (h.y+bob)-(player.y+effSize/2));
-        if(dist < h.r+effSize*0.35){
+        const dist=Math.hypot(hx+h.r - figCX, (h.y+bob) - figCY);
+        if(dist < h.r + figR * 0.9){
             if(growProtected){
-                // Большая или уменьшающаяся фигура давит мину
                 _crushMine(h, hx);
                 hazards.splice(i,1);
             } else if(!mineImmune){
                 lastDeathCause = 'mine';
-                triggerDeathAnim(figLeft+effSize/2, player.y+effSize/2); return;
+                triggerDeathAnim(figCX, figCY); return;
             }
-            // shrinkGrace или shield — просто проходим мимо
         }
     }
 

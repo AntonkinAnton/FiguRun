@@ -285,14 +285,34 @@ function draw() {
         if (player.superJumpTimer > 0) { ctx.restore(); }
 
         // Лицо
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(-s * 0.22, -s * 0.18, s * 0.11, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(s * 0.22, -s * 0.18, s * 0.11, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#222';
-        ctx.beginPath(); ctx.arc(-s * 0.22, -s * 0.18, s * 0.05, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(s * 0.22, -s * 0.18, s * 0.05, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#222'; ctx.lineWidth = s * 0.05;
-        ctx.beginPath(); ctx.arc(0, s * 0.12, s * 0.19, 0.25, Math.PI - 0.25); ctx.stroke();
+        if(player.megaGrow){
+            // Пафосное лицо: полуприкрытые глаза + уголки рта вниз
+            // Белки глаз
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(-s*0.22, -s*0.18, s*0.11, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc( s*0.22, -s*0.18, s*0.11, 0, Math.PI*2); ctx.fill();
+            // Зрачки — смотрят чуть вниз (усталый взгляд)
+            ctx.fillStyle = '#222';
+            ctx.beginPath(); ctx.arc(-s*0.22, -s*0.14, s*0.05, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc( s*0.22, -s*0.14, s*0.05, 0, Math.PI*2); ctx.fill();
+            // Веки — полуприкрытые (прямая линия по верхней половине глаза)
+            ctx.fillStyle = currentPlayerColor;
+            ctx.beginPath(); ctx.rect(-s*0.33, -s*0.30, s*0.22, s*0.12); ctx.fill();
+            ctx.beginPath(); ctx.rect( s*0.11, -s*0.30, s*0.22, s*0.12); ctx.fill();
+            // Рот — уголки вниз (перевёрнутая дуга)
+            ctx.strokeStyle = '#222'; ctx.lineWidth = s*0.05;
+            ctx.beginPath(); ctx.arc(0, s*0.22, s*0.16, Math.PI+0.35, -0.35); ctx.stroke();
+        } else {
+            // Обычное лицо
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(-s * 0.22, -s * 0.18, s * 0.11, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(s * 0.22, -s * 0.18, s * 0.11, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#222';
+            ctx.beginPath(); ctx.arc(-s * 0.22, -s * 0.18, s * 0.05, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(s * 0.22, -s * 0.18, s * 0.05, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#222'; ctx.lineWidth = s * 0.05;
+            ctx.beginPath(); ctx.arc(0, s * 0.12, s * 0.19, 0.25, Math.PI - 0.25); ctx.stroke();
+        }
 
         // Хмурые брови при grow
         if (player.growTimer > 0 || player.growScale > 1.1) {
