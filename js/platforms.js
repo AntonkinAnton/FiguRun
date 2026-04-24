@@ -8,19 +8,23 @@ function createPlatform(x, y, w, type='normal'){
     const p = {
         x, y, w, h:32, type,
         coinItems:[], booster:null, dead:false,
-        liftY0:y, liftAmp:0, liftSpeed:0, liftPhase:0, _dy:0,
+        liftY0:y, liftAmp:0, liftSpeed:0, liftPhase:0, liftAngle:0, _dy:0,
         crumbleFalling:false, crumbleTimer:0, crumbleAlpha:1,
-        slideX0:x, slideAmp:0, slideSpeed:0, slidePhase:0, _dx:0
+        slideX0:x, slideAmp:0, slideSpeed:0, slidePhase:0, slideAngle:0, _dx:0
     };
     if(type==='lift'){
         p.liftAmp   = 60+Math.random()*80;
         p.liftSpeed = 0.018+Math.random()*0.022;
         p.liftPhase = Math.random()*Math.PI*2;
+        // Инициализируем угол так чтобы sin(liftAngle) = sin(liftPhase)
+        // т.е. платформа стартует в той же позиции что и раньше
+        p.liftAngle = p.liftPhase;
     }
     if(type==='slide'){
         p.slideAmp   = 55+Math.random()*65;
         p.slideSpeed = 0.016+Math.random()*0.02;
         p.slidePhase = Math.random()*Math.PI*2;
+        p.slideAngle = p.slidePhase;
     }
     return p;
 }
@@ -226,6 +230,9 @@ function resetGame(){
     particles=[]; hazards=[]; freeCoins=[];
     trailBuf=[]; speedTrailBuf=[];
     screenShake = 0;
+    timeScale   = 1;
+    lcdActive   = false;
+    lcdChecked  = false;
     MEDALS = buildMedals();
     boosterState = {lastType:null, platformsSinceLast:0, minInterval:4, maxInterval:9};
     nextBoosterIn = 5;

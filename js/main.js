@@ -58,6 +58,68 @@ function _crushMine(h, hx){
     }
 }
 
+// ── LAST CHANCE DRAW: симуляция траектории ──────────────
+// Возвращает true если игрок гарантированно упадёт в пропасть
+function _predictWillDie(){
+    const SIM_STEPS = 240;          // ~4 сек при 60fps
+    const SIM_DT    = 1;
+    const pSize     = player.size * player.growScale;
+
+    // Снимок состояния
+    let sy  = player.y;
+    let svy = player.vy;
+    let scx = cameraX;              // камера тоже движется
+
+    for(let i=0; i<SIM_STEPS; i++){
+        svy += GRAVITY * SIM_DT;
+        sy  += svy * SIM_DT;
+        scx += currentSpeed * SIM_DT;
+
+        // Упал за экран — погибнет
+        if(sy > H + 80) return true;
+
+        // Проверяем платформы (берём их текущее положение — достаточно точно)
+        for(let p of platforms){
+            if(p.dead) continue;
+            const px = p.x - scx;
+            if(player.x + pSize > px && player.x < px + p.w &&
+               svy >= 0 &&
+               sy + pSize >= p.y && sy + pSize - svy * SIM_DT <= p.y + 8){
+                return false; // найдена платформа — выживет
+            }
+        }
+
+        // Проверяем мины (при контакте с миной игрок тоже не упадёт в пропасть)
+        for(let h of hazards){
+            const hx = h.x - scx;
+            if(Math.hypot(hx + h.r - (player.x + pSize/2), h.y - (sy + pSize/2)) < h.r + pSize * 0.35){
+                return false; // мина остановит
+            }
+        }
+    }
+
+    return true; // за 4 секунды ничего не встретил — упадёт
+}
+
+// ── LAST CHANCE DRAW: плавное изменение timeScale ───────
+function _updateTimeScale(dt){
+    const target = lcdActive ? 0.12 : 1;
+    const speed  = lcdActive ? 0.08 : 0.06; // плавно замедляем, чуть быстрее ускоряем
+    timeScale += (target - timeScale) * speed * dt * 3;
+    if(Math.abs(timeScale - target) < 0.005) timeScale = target;
+}
+
+// ── LAST CHANCE DRAW: деактивация (линия нарисована или отменена) ─
+function cancelLCD(){
+    lcdActive  = false;
+    lcdChecked = true; // не проверяем снова в этом падении
+}
+
+function activateLCD(){
+    lcdActive  = true;
+    lcdChecked = true;
+}
+
 function update(dt=1){
     if(paused) return;
 
@@ -81,36 +143,83 @@ function update(dt=1){
         if(pt.life<=0) particles.splice(i,1);
     }
 
-    // Лифты и слайды используют performance.now() — независимы от dt
-    const t=performance.now()/1000;
-    for(let p of platforms){
-        if(p.type==='lift'){
-            const oldY=p.y;
-            p.y=p.liftY0+Math.sin(t*p.liftSpeed*60+p.liftPhase)*p.liftAmp;
-            p.y=Math.max(300,Math.min(800,p.y));
-            p._dy=p.y-oldY;
-        }
-        if(p.type==='slide'){
-            const oldX=p.x;
-            p.x=p.slideX0+Math.sin(t*p.slideSpeed*60+p.slidePhase)*p.slideAmp;
-            p._dx=p.x-oldX;
-        }
-    }
+    // Мины — фаза вращения шипов (только когда игра идёт)
     for(let h of hazards){ h.phase+=0.04*dt; }
 
     if(!gameRunning||player.dead) return;
 
-    // Скорость
+    // ── LAST CHANCE DRAW: проверка и управление timeScale ──
+    _updateTimeScale(dt);
+
+    // Деактивируем если приземлились (до начала рисования)
+    if(lcdActive && player.grounded) cancelLCD();
+
+    // Сбрасываем lcdChecked когда игрок снова на земле или есть прыжки
+    if(player.grounded || player.jumpsLeft > 0) lcdChecked = false;
+
+    // Условие для проверки: в воздухе, прыжков нет, летим вниз
+    if(!lcdActive && !lcdChecked &&
+       !player.grounded && player.jumpsLeft === 0 &&
+       player.vy > 0 && _lcdTestMode){
+
+        // Находим 2 ближайшие платформы по X и берём верхнюю (мин. Y) из них
+        const nearby = platforms
+            .filter(p => {
+                if(p.dead) return false;
+                const px = p.x - cameraX;
+                return px + p.w >= player.x - 200 && px <= player.x + 500;
+            })
+            .sort((a,b) => {
+                const ax = Math.abs((a.x - cameraX + a.w/2) - (player.x + player.size/2));
+                const bx = Math.abs((b.x - cameraX + b.w/2) - (player.x + player.size/2));
+                return ax - bx;
+            })
+            .slice(0, 2);
+
+        // Верхняя точка из двух ближайших (для лифта — liftY0 - liftAmp, самая высокая)
+        let triggerY = Infinity;
+        for(let p of nearby){
+            const top = p.type === 'lift' ? p.liftY0 - p.liftAmp : p.y;
+            if(top < triggerY) triggerY = top;
+        }
+
+        // Как только нижний край фигуры прошёл верхнюю точку ближайших платформ + 4px запас
+        if(triggerY < Infinity && player.y + player.size * player.growScale > triggerY + 4){
+            lcdChecked = true;
+            // Симулируем — активируем только если действительно не попадёт никуда
+            if(_predictWillDie()) activateLCD();
+        }
+    }
+
+    // Пока LCD активен — физика замедлена, всё остальное через effectiveDt
+    const effectiveDt = dt * timeScale;
+
+    // Лифты и слайды — через effectiveDt (замедляются при LCD)
+    for(let p of platforms){
+        if(p.type==='lift'){
+            const oldY = p.y;
+            p.liftAngle += p.liftSpeed * effectiveDt;
+            p.y = p.liftY0 + Math.sin(p.liftAngle) * p.liftAmp;
+            p.y = Math.max(300, Math.min(800, p.y));
+            p._dy = p.y - oldY;
+        }
+        if(p.type==='slide'){
+            const oldX = p.x;
+            p.slideAngle += p.slideSpeed * effectiveDt;
+            p.x = p.slideX0 + Math.sin(p.slideAngle) * p.slideAmp;
+            p._dx = p.x - oldX;
+        }
+    }
     const natural=baseSpeed+(score/5000)*1.2;
     const boost  =player.speedBoostTimer>0?SPEED_BOOST_ADD:0;
     currentSpeed =natural+boost;
 
-    if(player.shieldTimer>0)    player.shieldTimer-=dt;
+    if(player.shieldTimer>0)    player.shieldTimer-=effectiveDt;
     if(player.shieldTimer<=0)   player.shield=false;
-    if(player.superJumpTimer>0) player.superJumpTimer-=dt;
-    if(player.speedBoostTimer>0)player.speedBoostTimer-=dt;
+    if(player.superJumpTimer>0) player.superJumpTimer-=effectiveDt;
+    if(player.speedBoostTimer>0)player.speedBoostTimer-=effectiveDt;
     const wasGrowing = player.growTimer > 0;
-    if(player.growTimer>0)      player.growTimer-=dt;
+    if(player.growTimer>0)      player.growTimer-=effectiveDt;
     // Запускаем grace-период сразу как growTimer иссяк
     if(wasGrowing && player.growTimer<=0){
         player.shrinkGrace = 60;
@@ -122,15 +231,15 @@ function update(dt=1){
         }
         player.megaGrow = false;
     }
-    if(player.shrinkGrace>0)    player.shrinkGrace-=dt;
-    if(screenShake>0)           screenShake = Math.max(0, screenShake - dt * 1.2);
+    if(player.shrinkGrace>0)    player.shrinkGrace-=effectiveDt;
+    if(screenShake>0)           screenShake = Math.max(0, screenShake - effectiveDt * 1.2);
 
     // Плавный масштаб — якорим нижний край (ноги на платформе)
     {
         const target = player.growTimer > 0
             ? (player.megaGrow ? MEGA_GROW_SCALE : GROW_SCALE)
             : 1;
-        const speed  = 1 - Math.pow(1 - 0.18, dt);
+        const speed  = 1 - Math.pow(1 - 0.18, effectiveDt);
         const oldBottom = player.y + player.size * player.growScale;
         player.growScale += (target - player.growScale) * speed;
         if(Math.abs(player.growScale - target) < 0.01) player.growScale = target;
@@ -142,11 +251,10 @@ function update(dt=1){
     // Слайд → камера
     if(player.onSlide&&!player.onSlide.dead&&player.grounded) cameraX+=player.onSlide._dx;
 
-    // Физика + коллизия через субшаги — защита от туннелинга при фризах
-    // Максимум 1 субшаг = 0.5 нормального кадра, не более 4 шагов
+    // Физика + коллизия через субшаги
     const MAX_STEP = 0.5;
-    const steps = Math.min(Math.ceil(dt / MAX_STEP), 4);
-    const subDt  = dt / steps;
+    const steps = Math.min(Math.ceil(effectiveDt / MAX_STEP), 4);
+    const subDt  = effectiveDt / steps;
 
     for(let step=0; step<steps; step++){
         // Гравитация и движение по Y
@@ -164,6 +272,7 @@ function update(dt=1){
                 player.y = megaFloor - effSize;
                 if(player.vy > 2) screenShake = Math.min(14, player.vy * 0.6); // сотрясение при падении
                 player.vy = 0; player.grounded = true; player.jumpsLeft = 2;
+                if(lcdActive) cancelLCD();
             }
             // Уничтожаем все платформы которые задеты фигурой
             const camOffset = (player.growScale - 1) * player.size * 0.6;
@@ -190,6 +299,7 @@ function update(dt=1){
                    player.vy >= 0 &&
                    player.y+effSize >= p.y && player.y+effSize - player.vy*subDt <= p.y+8){
                     player.y=p.y-effSize; player.vy=0; player.grounded=true; player.jumpsLeft=2;
+                    if(lcdActive) cancelLCD(); // приземлились — LCD больше не нужен
                     if(p.type==='lift')  player.onLift=p;
                     if(p.type==='slide') player.onSlide=p;
                     if(p.type==='spring'){
@@ -206,19 +316,19 @@ function update(dt=1){
     }
 
     // Движение камеры и счёт — один раз за весь кадр
-    cameraX+=currentSpeed*dt; score+=currentSpeed*dt/3.8;
+    cameraX+=currentSpeed*effectiveDt; score+=currentSpeed*effectiveDt/3.8;
 
     // Ломающиеся
     for(let p of platforms){
         if(p.type==='crumble'&&p.crumbleFalling){
-            p.crumbleTimer-=dt; p.crumbleAlpha=Math.max(0,p.crumbleTimer/15);
+            p.crumbleTimer-=effectiveDt; p.crumbleAlpha=Math.max(0,p.crumbleTimer/15);
             if(p.crumbleTimer<=0) p.dead=true;
         }
     }
 
     // Вращение
     const effSize = player.size * player.growScale;
-    if(player.grounded) player.rotation += currentSpeed * 0.092 * dt / player.growScale;
+    if(player.grounded) player.rotation += currentSpeed * 0.092 * effectiveDt / player.growScale;
 
     // Визуальное смещение фигуры влево при росте (совпадает с render.js)
     const camOffset = player.megaGrow
