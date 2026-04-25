@@ -494,10 +494,32 @@ function _convertDrawToPlat(){
 
     const avgY = ys.reduce((a,b)=>a+b,0) / ys.length;
 
-    // Создаём платформу в мировых координатах
+    // Создаём lcd-платформу в мировых координатах
     const worldX = x1 + cameraX;
-    const p = createPlatform(worldX, avgY, w, 'lcd');
-    platforms.push(p);
+    const lcdPlat = createPlatform(worldX, avgY, w, 'lcd');
+    platforms.push(lcdPlat);
+
+    // Обновляем lastPlatformEnd чтобы не было резкого burst генерации
+    const lcdEnd = worldX + w;
+    if(lcdEnd > lastPlatformEnd) lastPlatformEnd = lcdEnd;
+
+    // Одна переходная normal-платформа правее lcd, на высоте между lcd и верхним рядом
+    // Ищем ближайшую платформу выше по Y для ориентира
+    const nearAbove = platforms
+        .filter(p => !p.dead && p.type !== 'lcd' && p.y < avgY - 60)
+        .sort((a,b) => Math.abs(a.y - avgY) - Math.abs(b.y - avgY))[0];
+
+    const targetY = nearAbove
+        ? (avgY + nearAbove.y) / 2          // середина между lcd и ближайшей верхней
+        : Math.max(400, avgY - 180);         // или просто выше на 180px
+
+    const bridgeW = 120 + Math.random() * 80;
+    const bridgeX = lcdEnd + 60 + Math.random() * 80;
+    const bridgeY = Math.max(320, Math.min(790, targetY));
+
+    const bridge = createPlatform(bridgeX, bridgeY, bridgeW, 'normal');
+    platforms.push(bridge);
+    if(bridgeX + bridgeW > lastPlatformEnd) lastPlatformEnd = bridgeX + bridgeW;
 
     // TODO: списать бонус из инвентаря
     // (сейчас _lcdTestMode=true, бонус не тратится)
