@@ -77,9 +77,8 @@ if(isFirstVisit) localStorage.setItem('fg_visited', '1');
 let medalTimer = 0;
 
 // ── LAST CHANCE DRAW ───────────────────
-let timeScale   = 1;     // множитель времени (1 = норма, 0.12 = слоу-мо)
-let lcdActive   = false; // режим рисования активен
-let lcdChecked  = false; // уже проверяли в этом падении (не спамим)
-// Заглушка бонуса — true для тестирования, потом привязать к инвентарю
-// player.hasDrawBooster будет добавлено отдельно при реализации инвентаря
-let _lcdTestMode = true; // TODO: заменить на проверку инвентаря
+let timeScale     = 1;
+let lcdActive     = false;
+let lcdChecked    = false;
+let lcdSlowTarget = 0.12; // динамический target замедления, пересчитывается в activateLCD
+let _lcdTestMode  = true;

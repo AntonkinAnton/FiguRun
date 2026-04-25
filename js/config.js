@@ -49,6 +49,15 @@ const DEATH_TITLES = {
     pop:'🫧 ЛОП!', melt:'💧 РАСПЛАВИЛСЯ!', unravel:'🧵 РАСПУСТИЛСЯ!'
 };
 
+// ── НАСТРОЙКИ LCD (Last Chance Draw) ────
+// LCD_PLAYER_SECONDS — сколько реальных секунд даётся игроку на рисование,
+//                      независимо от того, высоко или низко сработал LCD
+// LCD_LERP_IN        — скорость нарастания замедления
+// LCD_LERP_OUT       — скорость возврата к норме
+const LCD_PLAYER_SECONDS = 10;
+const LCD_LERP_IN        = 0.28;
+const LCD_LERP_OUT       = 0.06;
+
 function buildMedals(){
     const f=[
         {dist:500,label:'🥉 500 м!'},{dist:2000,label:'🥈 2000 м!'},

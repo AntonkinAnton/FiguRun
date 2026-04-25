@@ -233,6 +233,7 @@ function resetGame(){
     timeScale   = 1;
     lcdActive   = false;
     lcdChecked  = false;
+    lcdSlowTarget = 0.12;
     MEDALS = buildMedals();
     boosterState = {lastType:null, platformsSinceLast:0, minInterval:4, maxInterval:9};
     nextBoosterIn = 5;

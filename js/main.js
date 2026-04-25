@@ -103,8 +103,8 @@ function _predictWillDie(){
 
 // ── LAST CHANCE DRAW: плавное изменение timeScale ───────
 function _updateTimeScale(dt){
-    const target = lcdActive ? 0.12 : 1;
-    const speed  = lcdActive ? 0.08 : 0.06; // плавно замедляем, чуть быстрее ускоряем
+    const target = lcdActive ? lcdSlowTarget : 1;
+    const speed  = lcdActive ? LCD_LERP_IN : LCD_LERP_OUT;
     timeScale += (target - timeScale) * speed * dt * 3;
     if(Math.abs(timeScale - target) < 0.005) timeScale = target;
 }
@@ -112,10 +112,17 @@ function _updateTimeScale(dt){
 // ── LAST CHANCE DRAW: деактивация (линия нарисована или отменена) ─
 function cancelLCD(){
     lcdActive  = false;
-    lcdChecked = true; // не проверяем снова в этом падении
+    lcdChecked = true;
 }
 
-function activateLCD(){
+// triggerY — верхняя точка ближайшей платформы, по которой сработал триггер
+function activateLCD(triggerY){
+    // Физических кадров до дна экрана при свободном падении
+    const distToDrop = Math.max(1, H - player.y);
+    const physFrames = Math.sqrt(2 * distToDrop / GRAVITY);
+    // timeScale такой, чтобы игрок получил LCD_PLAYER_SECONDS реального времени
+    const realFrames = LCD_PLAYER_SECONDS * 60;
+    lcdSlowTarget = Math.min(1, physFrames / realFrames);
     lcdActive  = true;
     lcdChecked = true;
 }
@@ -146,10 +153,12 @@ function update(dt=1){
     // Мины — фаза вращения шипов (только когда игра идёт)
     for(let h of hazards){ h.phase+=0.04*dt; }
 
+    // timeScale всегда обновляем — даже после смерти, чтобы замедление плавно снималось
+    _updateTimeScale(dt);
+
     if(!gameRunning||player.dead) return;
 
     // ── LAST CHANCE DRAW: проверка и управление timeScale ──
-    _updateTimeScale(dt);
 
     // Деактивируем если приземлились (до начала рисования)
     if(lcdActive && player.grounded) cancelLCD();
@@ -160,7 +169,7 @@ function update(dt=1){
     // Условие для проверки: в воздухе, прыжков нет, летим вниз
     if(!lcdActive && !lcdChecked &&
        !player.grounded && player.jumpsLeft === 0 &&
-       player.vy > 0 && _lcdTestMode){
+       player.vy > 0 && _lcdTestMode && !player.megaGrow){
 
         // Находим 2 ближайшие платформы по X и берём верхнюю (мин. Y) из них
         const nearby = platforms
@@ -187,7 +196,7 @@ function update(dt=1){
         if(triggerY < Infinity && player.y + player.size * player.growScale > triggerY + 4){
             lcdChecked = true;
             // Симулируем — активируем только если действительно не попадёт никуда
-            if(_predictWillDie()) activateLCD();
+            if(_predictWillDie()) activateLCD(triggerY);
         }
     }
 

@@ -25,6 +25,8 @@ function triggerDeathAnim(x,y){
     const type = DEATH_TYPES[Math.floor(Math.random()*DEATH_TYPES.length)];
     player.dead = true;
     score = Math.floor(score);
+    // Сбрасываем LCD — timeScale начнёт плавно возвращаться к 1
+    lcdActive = false;
     player.deathAnim = {type, t:0, x, y, done:false};
 
     const c = currentPlayerColor;
