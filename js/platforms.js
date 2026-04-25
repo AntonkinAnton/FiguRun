@@ -234,6 +234,8 @@ function resetGame(){
     lcdActive   = false;
     lcdChecked  = false;
     lcdSlowTarget = 0.12;
+    drawPoints  = [];
+    isDrawing   = false;
     MEDALS = buildMedals();
     boosterState = {lastType:null, platformsSinceLast:0, minInterval:4, maxInterval:9};
     nextBoosterIn = 5;

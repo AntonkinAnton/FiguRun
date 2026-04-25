@@ -377,6 +377,53 @@ function draw() {
         ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H); ctx.restore();
     }
 
+    // ── SLOW-MO OVERLAY (LCD эффект фокуса) ──────────────────
+    if(lcdActive || timeScale < 0.98){
+        const intensity = Math.max(0, 1 - timeScale); // 0=норма, 1=макс замедление
+
+        // Лёгкий холодно-белый tint на весь экран
+        ctx.save();
+        ctx.globalAlpha = intensity * 0.12;
+        ctx.fillStyle = '#e8f4ff';
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+
+        // Виньетка по краям — радиальный градиент от прозрачного к голубоватому
+        ctx.save();
+        const vgn = ctx.createRadialGradient(W/2, H/2, H*0.25, W/2, H/2, H*0.78);
+        vgn.addColorStop(0, 'rgba(180,220,255,0)');
+        vgn.addColorStop(1, `rgba(120,180,255,${(intensity * 0.28).toFixed(2)})`);
+        ctx.fillStyle = vgn;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+    }
+
+    // ── РИСУЕМАЯ ЛИНИЯ (LCD) ─────────────────────────────────
+    if(lcdActive && drawPoints.length >= 2){
+        ctx.save();
+        ctx.lineCap    = 'round';
+        ctx.lineJoin   = 'round';
+        ctx.lineWidth  = 28;
+        ctx.strokeStyle= 'rgba(255,255,255,0.25)';
+        ctx.beginPath();
+        ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
+        for(let i=1; i<drawPoints.length; i++)
+            ctx.lineTo(drawPoints[i].x, drawPoints[i].y);
+        ctx.stroke();
+
+        // Внутренняя яркая линия
+        ctx.lineWidth  = 24;
+        ctx.strokeStyle= 'rgba(255,255,255,0.9)';
+        ctx.shadowColor= '#a0d8ff';
+        ctx.shadowBlur = 28;
+        ctx.beginPath();
+        ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
+        for(let i=1; i<drawPoints.length; i++)
+            ctx.lineTo(drawPoints[i].x, drawPoints[i].y);
+        ctx.stroke();
+        ctx.restore();
+    }
+
     // Закрываем сотрясение экрана
     if(screenShake > 0) ctx.restore();
 }

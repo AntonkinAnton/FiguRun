@@ -82,3 +82,7 @@ let lcdActive     = false;
 let lcdChecked    = false;
 let lcdSlowTarget = 0.12; // динамический target замедления, пересчитывается в activateLCD
 let _lcdTestMode  = true;
+
+// Точки рисуемой линии (экранные координаты)
+let drawPoints    = [];
+let isDrawing     = false;

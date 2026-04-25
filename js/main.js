@@ -453,5 +453,58 @@ window.addEventListener('keydown', e=>{
     if(e.key===' '){ e.preventDefault(); jump(); }
     if(e.key==='Escape' && gameRunning) togglePause();
 });
-canvas.addEventListener('mousedown', ()=> jump());
-canvas.addEventListener('touchstart', e=>{ e.preventDefault(); jump(); });
+
+// Перевод координат события в координаты canvas
+function _eventToCanvas(e){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = W / rect.width;
+    const scaleY = H / rect.height;
+    const src = e.touches ? e.touches[0] : e;
+    return {
+        x: (src.clientX - rect.left) * scaleX,
+        y: (src.clientY - rect.top)  * scaleY
+    };
+}
+
+canvas.addEventListener('mousedown', e=>{
+    if(lcdActive){
+        const p = _eventToCanvas(e);
+        isDrawing  = true;
+        drawPoints = [p];
+    } else {
+        jump();
+    }
+});
+canvas.addEventListener('mousemove', e=>{
+    if(!lcdActive || !isDrawing) return;
+    drawPoints.push(_eventToCanvas(e));
+});
+canvas.addEventListener('mouseup', ()=>{
+    if(lcdActive && isDrawing){
+        isDrawing = false;
+        // Часть 3: конвертация линии в платформу
+    }
+});
+
+canvas.addEventListener('touchstart', e=>{
+    e.preventDefault();
+    if(lcdActive){
+        const p = _eventToCanvas(e);
+        isDrawing  = true;
+        drawPoints = [p];
+    } else {
+        jump();
+    }
+}, {passive: false});
+canvas.addEventListener('touchmove', e=>{
+    e.preventDefault();
+    if(!lcdActive || !isDrawing) return;
+    drawPoints.push(_eventToCanvas(e));
+}, {passive: false});
+canvas.addEventListener('touchend', e=>{
+    e.preventDefault();
+    if(lcdActive && isDrawing){
+        isDrawing = false;
+        // Часть 3: конвертация линии в платформу
+    }
+}, {passive: false});
