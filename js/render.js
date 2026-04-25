@@ -53,6 +53,7 @@ function draw() {
         else if (p.type === 'crumble') { ctx.fillStyle = '#7d3c00'; ctx.strokeStyle = '#5a2800'; }
         else if (p.type === 'spring') { ctx.fillStyle = '#1b4332'; ctx.strokeStyle = '#52b788'; }
         else if (p.type === 'slide') { ctx.shadowColor = '#f39c12'; ctx.shadowBlur = 10; ctx.fillStyle = '#7d4e00'; ctx.strokeStyle = '#f39c12'; }
+        else if (p.type === 'lcd') { ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 18; ctx.fillStyle = 'rgba(200,230,255,0.55)'; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; }
         else { ctx.fillStyle = currentTheme.plat; ctx.strokeStyle = currentTheme.stroke; }
         ctx.lineWidth = 7; ctx.fillRect(sx, p.y, p.w, p.h); ctx.strokeRect(sx, p.y, p.w, p.h); ctx.shadowBlur = 0;
 
@@ -60,6 +61,7 @@ function draw() {
         else if (p.type === 'crumble') ctx.fillStyle = '#c0392b';
         else if (p.type === 'spring') ctx.fillStyle = '#52b788';
         else if (p.type === 'slide') ctx.fillStyle = '#f39c12';
+        else if (p.type === 'lcd') ctx.fillStyle = 'rgba(255,255,255,0.7)';
         else ctx.fillStyle = currentTheme.grass;
         ctx.fillRect(sx, p.y - 10, p.w, 14);
 
@@ -403,7 +405,7 @@ function draw() {
         ctx.save();
         ctx.lineCap    = 'round';
         ctx.lineJoin   = 'round';
-        ctx.lineWidth  = 28;
+        ctx.lineWidth  = 18;
         ctx.strokeStyle= 'rgba(255,255,255,0.25)';
         ctx.beginPath();
         ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
@@ -412,10 +414,10 @@ function draw() {
         ctx.stroke();
 
         // Внутренняя яркая линия
-        ctx.lineWidth  = 24;
+        ctx.lineWidth  = 8;
         ctx.strokeStyle= 'rgba(255,255,255,0.9)';
         ctx.shadowColor= '#a0d8ff';
-        ctx.shadowBlur = 28;
+        ctx.shadowBlur = 14;
         ctx.beginPath();
         ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
         for(let i=1; i<drawPoints.length; i++)

@@ -479,10 +479,37 @@ canvas.addEventListener('mousemove', e=>{
     if(!lcdActive || !isDrawing) return;
     drawPoints.push(_eventToCanvas(e));
 });
+// ── LAST CHANCE DRAW: конвертация линии в платформу ─────
+function _convertDrawToPlat(){
+    if(drawPoints.length < 2){ cancelLCD(); drawPoints=[]; return; }
+
+    const xs = drawPoints.map(p=>p.x);
+    const ys = drawPoints.map(p=>p.y);
+    const x1 = Math.min(...xs);
+    const x2 = Math.max(...xs);
+    const w  = x2 - x1;
+
+    // Слишком короткая — считаем случайным тапом, бонус не тратим
+    if(w < 60){ cancelLCD(); drawPoints=[]; return; }
+
+    const avgY = ys.reduce((a,b)=>a+b,0) / ys.length;
+
+    // Создаём платформу в мировых координатах
+    const worldX = x1 + cameraX;
+    const p = createPlatform(worldX, avgY, w, 'lcd');
+    platforms.push(p);
+
+    // TODO: списать бонус из инвентаря
+    // (сейчас _lcdTestMode=true, бонус не тратится)
+
+    cancelLCD();
+    drawPoints = [];
+}
+
 canvas.addEventListener('mouseup', ()=>{
     if(lcdActive && isDrawing){
         isDrawing = false;
-        // Часть 3: конвертация линии в платформу
+        _convertDrawToPlat();
     }
 });
 
@@ -505,6 +532,6 @@ canvas.addEventListener('touchend', e=>{
     e.preventDefault();
     if(lcdActive && isDrawing){
         isDrawing = false;
-        // Часть 3: конвертация линии в платформу
+        _convertDrawToPlat();
     }
 }, {passive: false});
