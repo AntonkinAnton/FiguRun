@@ -392,7 +392,7 @@ function draw() {
         ctx.save();
 
         const baseX = W - 24;
-        const baseY = 72;
+        const baseY = 128;
 
         const fontSize = Math.round(Math.max(22, Math.min(W * 0.096, 32)));
         ctx.font = `bold ${fontSize}px sans-serif`;
@@ -419,8 +419,13 @@ function draw() {
         ctx.textBaseline = 'middle';
 
         // glow
-        ctx.shadowColor = '#ff2600';
+        ctx.shadowColor = '#3ab7ff';
         ctx.shadowBlur = 16;
+
+        // обводка
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(0, 202, 252, 0.63)';
+        ctx.strokeText(text, 0, 0);
 
         ctx.fillStyle = '#ffffff';
         ctx.fillText(text, 0, 0);
@@ -432,7 +437,7 @@ function draw() {
         // 🔘 КНОПКА
         // ─────────────────────────
 
-        const btnX = 16, btnY = 72, btnW = 170, btnH = 42, btnR = 12;
+        const btnX = 16, btnY = 128, btnW = 170, btnH = 42, btnR = 12;
 
         // лёгкий pulse
         const btnPulse = 1 + Math.sin(t * 5) * 0.05;
@@ -445,12 +450,12 @@ function draw() {
 
         // фон (градиент)
         const btnGrad = ctx.createLinearGradient(0, 0, btnW, btnH);
-        btnGrad.addColorStop(0, 'rgba(0,0,0,0.6)');
+        btnGrad.addColorStop(0, 'rgba(197, 33, 33, 0.3)');
         btnGrad.addColorStop(1, 'rgba(0,0,0,0.3)');
 
         ctx.fillStyle = btnGrad;
 
-        ctx.strokeStyle = 'rgba(0,200,255,0.8)';
+        ctx.strokeStyle = 'rgba(255, 4, 0, 0.8)';
         ctx.lineWidth = 2;
 
         ctx.beginPath();
@@ -459,7 +464,7 @@ function draw() {
         ctx.stroke();
 
         // glow
-        ctx.shadowColor = '#00e5ff';
+        ctx.shadowColor = '#ff2200';
         ctx.shadowBlur = 12;
 
         // текст

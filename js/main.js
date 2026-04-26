@@ -495,7 +495,7 @@ function _eventToCanvas(e) {
 // Проверка нажатия на кнопку ПРОПУСТИТЬ (LCD overlay)
 function _checkSkipBtn(e){
     const p = _eventToCanvas(e);
-    const btnX=16, btnY=72, btnW=150, btnH=38;
+    const btnX=16, btnY=128, btnW=150, btnH=38;
     return p.x>=btnX && p.x<=btnX+btnW && p.y>=btnY && p.y<=btnY+btnH;
 }
 
