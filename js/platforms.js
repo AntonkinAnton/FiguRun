@@ -248,6 +248,7 @@ function resetGame() {
     particles = []; hazards = []; freeCoins = [];
     trailBuf = []; speedTrailBuf = [];
     screenShake = 0;
+    gameTime    = 0;
     timeScale = 1;
     lcdActive = false;
     lcdChecked = false;

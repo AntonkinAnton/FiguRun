@@ -150,11 +150,30 @@ function update(dt = 1) {
         if (pt.life <= 0) particles.splice(i, 1);
     }
 
-    // Мины — фаза вращения шипов (только когда игра идёт)
+    // Мины — фаза вращения шипов (через dt — не зависит от замедления)
     for (let h of hazards) { h.phase += 0.04 * dt; }
 
     // timeScale всегда обновляем — даже после смерти, чтобы замедление плавно снималось
     _updateTimeScale(dt);
+
+    // Лифты и слайды — работают всегда, включая gameover
+    // effectiveDt здесь = dt * текущий timeScale (замедляется при LCD)
+    const _eDt = dt * timeScale;
+    for (let p of platforms) {
+        if (p.type === 'lift') {
+            const oldY = p.y;
+            p.liftAngle += p.liftSpeed * _eDt;
+            p.y = p.liftY0 + Math.sin(p.liftAngle) * p.liftAmp;
+            p.y = Math.max(300, Math.min(800, p.y));
+            p._dy = p.y - oldY;
+        }
+        if (p.type === 'slide') {
+            const oldX = p.x;
+            p.slideAngle += p.slideSpeed * _eDt;
+            p.x = p.slideX0 + Math.sin(p.slideAngle) * p.slideAmp;
+            p._dx = p.x - oldX;
+        }
+    }
 
     if (!gameRunning || player.dead) return;
 
@@ -203,22 +222,9 @@ function update(dt = 1) {
     // Пока LCD активен — физика замедлена, всё остальное через effectiveDt
     const effectiveDt = dt * timeScale;
 
-    // Лифты и слайды — через effectiveDt (замедляются при LCD)
-    for (let p of platforms) {
-        if (p.type === 'lift') {
-            const oldY = p.y;
-            p.liftAngle += p.liftSpeed * effectiveDt;
-            p.y = p.liftY0 + Math.sin(p.liftAngle) * p.liftAmp;
-            p.y = Math.max(300, Math.min(800, p.y));
-            p._dy = p.y - oldY;
-        }
-        if (p.type === 'slide') {
-            const oldX = p.x;
-            p.slideAngle += p.slideSpeed * effectiveDt;
-            p.x = p.slideX0 + Math.sin(p.slideAngle) * p.slideAmp;
-            p._dx = p.x - oldX;
-        }
-    }
+    // gameTime — игровое время, замедляется при LCD (используется в render для анимаций)
+    gameTime += effectiveDt;
+
     const natural = baseSpeed + (score / 5000) * 1.2;
     const boost = player.speedBoostTimer > 0 ? SPEED_BOOST_ADD : 0;
     currentSpeed = natural + boost;
@@ -357,7 +363,7 @@ function update(dt = 1) {
     for (let i = hazards.length - 1; i >= 0; i--) {
         const h = hazards[i];
         const hx = h.x - cameraX;
-        const bob = Math.sin(performance.now() / 500 + h.bobPhase) * 5;
+        const bob = Math.sin(gameTime / 30 + h.bobPhase) * 5;
         const dist = Math.hypot(hx + h.r - figCX, (h.y + bob) - figCY);
         if (dist < h.r + figR * 0.9) {
             if (growProtected) {
@@ -469,8 +475,16 @@ function _eventToCanvas(e) {
     };
 }
 
+// Проверка нажатия на кнопку ПРОПУСТИТЬ (LCD overlay)
+function _checkSkipBtn(e){
+    const p = _eventToCanvas(e);
+    const btnX=16, btnY=72, btnW=150, btnH=38;
+    return p.x>=btnX && p.x<=btnX+btnW && p.y>=btnY && p.y<=btnY+btnH;
+}
+
 canvas.addEventListener('mousedown', e => {
     if (lcdActive) {
+        if(_checkSkipBtn(e)){ cancelLCD(); drawPoints=[]; return; }
         const p = _eventToCanvas(e);
         isDrawing = true;
         drawPoints = [p];
@@ -484,7 +498,7 @@ canvas.addEventListener('mousemove', e => {
 });
 // ── LAST CHANCE DRAW: конвертация линии в платформу ─────
 function _convertDrawToPlat() {
-    if (drawPoints.length < 2) { cancelLCD(); drawPoints = []; return; }
+    if (drawPoints.length < 2) {drawPoints = []; return; }
 
     const xs = drawPoints.map(p => p.x);
     const ys = drawPoints.map(p => p.y);
@@ -493,7 +507,7 @@ function _convertDrawToPlat() {
     const w = x2 - x1;
 
     // Слишком короткая — считаем случайным тапом, бонус не тратим
-    if (w < 60) { cancelLCD(); drawPoints = []; return; }
+    if (w < 60) {drawPoints = []; return; }
 
     const avgY = ys.reduce((a, b) => a + b, 0) / ys.length;
 
@@ -507,35 +521,46 @@ function _convertDrawToPlat() {
     const lcdEnd = worldX + w;
     //if (lcdEnd > lastPlatformEnd) lastPlatformEnd = lcdEnd; // - бессмысленно - не используем
 
-    // Одна переходная normal-платформа правее lcd, на высоте между lcd и верхним рядом
-    // Ищем ближайшую платформу выше по Y для ориентира
-    const nearAbove = platforms
-        .filter(p => !p.dead && p.type !== 'lcd' && p.y < avgY - 60)
-        .sort((a, b) => Math.abs(a.y - avgY) - Math.abs(b.y - avgY))[0];
+    // Одна переходная normal-платформа правее lcd — только если некуда прыгнуть
+    // Ищем платформу в зоне досягаемости правее lcd и выше/вровень с ней
+    const hasNearby = platforms.some(p =>
+        !p.dead && p.type !== 'lcd' &&
+        p.x - cameraX >= x2 &&              // правее нарисованной линии (экранные коорд)
+        p.x - cameraX <= x2 + 500 &&        // в радиусе 500px вправо
+        p.y >= avgY - 200 &&                 // не слишком высоко
+        p.y <= avgY + 100                    // и не ниже lcd
+    );
 
-    const targetY = nearAbove
-        ? (avgY + nearAbove.y) / 2          // середина между lcd и ближайшей верхней
-        : Math.max(400, avgY - 180);         // или просто выше на 180px
+    if (!hasNearby) {
+        // Нет куда прыгнуть — ставим мост
+        const nearAbove = platforms
+            .filter(p => !p.dead && p.type !== 'lcd' && p.y < avgY - 60)
+            .sort((a, b) => Math.abs(a.y - avgY) - Math.abs(b.y - avgY))[0];
 
-    const bridgeW = 200 + Math.random() * 80;
-    const bridgeX = lcdEnd + 60 + Math.random() * 80;
-    const bridgeY = Math.max(320, Math.min(790, targetY));
+        const targetY = nearAbove
+            ? (avgY + nearAbove.y) / 2
+            : Math.max(400, avgY - 180);
 
-    const targetX = bridgeX;
+        const bridgeW = 200 + Math.random() * 80;
+        const bridgeX = lcdEnd + 60 + Math.random() * 80;
+        const bridgeY = Math.max(320, Math.min(790, targetY));
 
-    // старт за правым краем экрана
-    const startX = cameraX + W + 100;
+        // Проверка: мост не пересекается с существующими платформами
+        const overlaps = platforms.some(p =>
+            !p.dead &&
+            bridgeX < p.x + p.w + 30 && bridgeX + bridgeW > p.x - 30 &&
+            Math.abs(bridgeY - p.y) < 60
+        );
 
-    const bridge = createPlatform(startX, bridgeY, bridgeW, 'normal');
-
-    // служебные флаги
-    bridge.isBridge = true;
-    bridge.spawning = true;
-    bridge.targetX = targetX;
-
-    bridge.lcdAlpha = 0;
-
-    platforms.push(bridge);
+        if (!overlaps) {
+            const bridge = createPlatform(cameraX + W + 100, bridgeY, bridgeW, 'normal');
+            bridge.isBridge = true;
+            bridge.spawning = true;
+            bridge.targetX  = bridgeX;
+            bridge.lcdAlpha = 0;
+            platforms.push(bridge);
+        }
+    }
     //if (bridgeX + bridgeW > lastPlatformEnd) lastPlatformEnd = bridgeX + bridgeW;
 
     // TODO: списать бонус из инвентаря
@@ -555,6 +580,7 @@ canvas.addEventListener('mouseup', () => {
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     if (lcdActive) {
+        if(_checkSkipBtn(e)){ cancelLCD(); drawPoints=[]; return; }
         const p = _eventToCanvas(e);
         isDrawing = true;
         drawPoints = [p];

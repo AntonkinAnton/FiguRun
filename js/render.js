@@ -15,9 +15,9 @@ function draw() {
     ctx.clearRect(0, 0, W, H);
 
     // Сотрясение экрана (megaGrow приземление)
-    if(screenShake > 0){
-        const sx = (Math.random()-0.5) * screenShake * 2;
-        const sy = (Math.random()-0.5) * screenShake * 2;
+    if (screenShake > 0) {
+        const sx = (Math.random() - 0.5) * screenShake * 2;
+        const sy = (Math.random() - 0.5) * screenShake * 2;
         ctx.save();
         ctx.translate(sx, sy);
     }
@@ -88,7 +88,8 @@ function draw() {
         if (p.type === 'lift' || p.type === 'slide') {
             for (let c of p.coinItems) {
                 if (c.collected) continue;
-                const cx2 = sx + c.relX, cy2 = p.y - 28, bounce = Math.sin(performance.now() / 300 + c.relX) * 4;
+                const cx2 = sx + c.relX, cy2 = p.y - 28;
+                const bounce = Math.sin(gameTime / 18 + c.relX) * 4;
                 ctx.save(); ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = 8; ctx.fillStyle = '#f1c40f'; ctx.strokeStyle = '#e67e22'; ctx.lineWidth = 3;
                 ctx.beginPath(); ctx.arc(cx2, cy2 + bounce, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
                 ctx.fillStyle = '#fff8'; ctx.beginPath(); ctx.arc(cx2 - 3, cy2 + bounce - 3, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
@@ -103,7 +104,7 @@ function draw() {
         if (c.collected) continue;
         const cx2 = c.x - cameraX, cy2 = c.y;
         if (cx2 < -20 || cx2 > W + 20) continue;
-        const bounce = Math.sin(performance.now() / 300 + c.x) * 4;
+        const bounce = Math.sin(gameTime / 18 + c.x) * 4;
         ctx.save();
         ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = 8;
         ctx.fillStyle = '#f1c40f'; ctx.strokeStyle = '#e67e22'; ctx.lineWidth = 3;
@@ -118,7 +119,7 @@ function draw() {
         const sx = p.x - cameraX;
         if (sx > W + 150 || sx + p.w < -150) continue;
         if (!p.booster || p.booster.collected) continue;
-        const bx = sx + p.booster.relX, by = p.y - 36, pulse = 0.85 + Math.sin(performance.now() / 200) * 0.15;
+        const bx = sx + p.booster.relX, by = p.y - 36, pulse = 0.85 + Math.sin(gameTime / 12) * 0.15;
         let bgColor, icon;
         if (p.booster.type === 'jump') { bgColor = '#00bcd4'; icon = '⚡'; }
         else if (p.booster.type === 'speed') { bgColor = '#ff9800'; icon = '🚀'; }
@@ -133,7 +134,7 @@ function draw() {
     for (let h of hazards) {
         const hx = h.x - cameraX;
         if (hx + h.r * 2 < -60 || hx - h.r > W + 60) continue;
-        const bob = Math.sin(performance.now() / 500 + h.bobPhase) * 5;
+        const bob = Math.sin(gameTime / 30 + h.bobPhase) * 5;
         const cx = hx + h.r, cy = h.y + bob;
         ctx.save(); ctx.translate(cx, cy);
         ctx.fillStyle = '#2a2a2a';
@@ -295,23 +296,23 @@ function draw() {
         if (player.superJumpTimer > 0) { ctx.restore(); }
 
         // Лицо
-        if(player.megaGrow){
+        if (player.megaGrow) {
             // Пафосное лицо: полуприкрытые глаза + уголки рта вниз
             // Белки глаз
             ctx.fillStyle = '#fff';
-            ctx.beginPath(); ctx.arc(-s*0.22, -s*0.18, s*0.11, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc( s*0.22, -s*0.18, s*0.11, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(-s * 0.22, -s * 0.18, s * 0.11, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(s * 0.22, -s * 0.18, s * 0.11, 0, Math.PI * 2); ctx.fill();
             // Зрачки — смотрят чуть вниз (усталый взгляд)
             ctx.fillStyle = '#222';
-            ctx.beginPath(); ctx.arc(-s*0.22, -s*0.14, s*0.05, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc( s*0.22, -s*0.14, s*0.05, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(-s * 0.22, -s * 0.14, s * 0.05, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(s * 0.22, -s * 0.14, s * 0.05, 0, Math.PI * 2); ctx.fill();
             // Веки — полуприкрытые (прямая линия по верхней половине глаза)
             ctx.fillStyle = currentPlayerColor;
-            ctx.beginPath(); ctx.rect(-s*0.33, -s*0.30, s*0.22, s*0.12); ctx.fill();
-            ctx.beginPath(); ctx.rect( s*0.11, -s*0.30, s*0.22, s*0.12); ctx.fill();
+            ctx.beginPath(); ctx.rect(-s * 0.33, -s * 0.30, s * 0.22, s * 0.12); ctx.fill();
+            ctx.beginPath(); ctx.rect(s * 0.11, -s * 0.30, s * 0.22, s * 0.12); ctx.fill();
             // Рот — уголки вниз (перевёрнутая дуга)
-            ctx.strokeStyle = '#222'; ctx.lineWidth = s*0.05;
-            ctx.beginPath(); ctx.arc(0, s*0.22, s*0.16, Math.PI+0.35, -0.35); ctx.stroke();
+            ctx.strokeStyle = '#222'; ctx.lineWidth = s * 0.05;
+            ctx.beginPath(); ctx.arc(0, s * 0.22, s * 0.16, Math.PI + 0.35, -0.35); ctx.stroke();
         } else {
             // Обычное лицо
             ctx.fillStyle = '#fff';
@@ -379,8 +380,99 @@ function draw() {
         ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H); ctx.restore();
     }
 
-    // ── SLOW-MO OVERLAY (LCD эффект фокуса) ──────────────────
-    if(lcdActive || timeScale < 0.98){
+    // ── LCD UI OVERLAY ────────────────────────────────────────
+    if (lcdActive) {
+
+        const text = 'РИСУЙ ПЛАТФОРМУ!';
+
+        const t = performance.now() / 1000;
+        const scale = 1 + Math.sin(t * 6) * 0.12;
+        const alpha = 0.85 + Math.sin(t * 4) * 0.15;
+
+        ctx.save();
+
+        const baseX = W - 24;
+        const baseY = 72;
+
+        const fontSize = Math.round(Math.max(22, Math.min(W * 0.096, 32)));
+        ctx.font = `bold ${fontSize}px sans-serif`;
+
+        // 👉 вычисляем ширину текста
+        const textWidth = ctx.measureText(text).width;
+
+        // 👉 центр текста (учитывая align right)
+        const centerX = baseX - textWidth / 2;
+        const centerY = baseY;
+
+        // 👉 перенос в центр
+        ctx.translate(centerX, centerY);
+
+        // наклон
+        ctx.rotate(0.18);
+
+        // масштаб от центра
+        ctx.scale(scale, scale);
+
+        ctx.globalAlpha = alpha;
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // glow
+        ctx.shadowColor = '#ff2600';
+        ctx.shadowBlur = 16;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(text, 0, 0);
+
+        ctx.restore();
+
+
+        // ─────────────────────────
+        // 🔘 КНОПКА
+        // ─────────────────────────
+
+        const btnX = 16, btnY = 72, btnW = 170, btnH = 42, btnR = 12;
+
+        // лёгкий pulse
+        const btnPulse = 1 + Math.sin(t * 5) * 0.05;
+
+        ctx.save();
+
+        ctx.translate(btnX + btnW / 2, btnY + btnH / 2);
+        ctx.scale(btnPulse, btnPulse);
+        ctx.translate(-btnW / 2, -btnH / 2);
+
+        // фон (градиент)
+        const btnGrad = ctx.createLinearGradient(0, 0, btnW, btnH);
+        btnGrad.addColorStop(0, 'rgba(0,0,0,0.6)');
+        btnGrad.addColorStop(1, 'rgba(0,0,0,0.3)');
+
+        ctx.fillStyle = btnGrad;
+
+        ctx.strokeStyle = 'rgba(0,200,255,0.8)';
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.roundRect(0, 0, btnW, btnH, btnR);
+        ctx.fill();
+        ctx.stroke();
+
+        // glow
+        ctx.shadowColor = '#00e5ff';
+        ctx.shadowBlur = 12;
+
+        // текст
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        ctx.fillText('ПРОПУСТИТЬ', btnW / 2, btnH / 2);
+
+        ctx.restore();
+    }
+    if (lcdActive || timeScale < 0.98) {
         const intensity = Math.max(0, 1 - timeScale); // 0=норма, 1=макс замедление
 
         // Лёгкий холодно-белый tint на весь экран
@@ -392,7 +484,7 @@ function draw() {
 
         // Виньетка по краям — радиальный градиент от прозрачного к голубоватому
         ctx.save();
-        const vgn = ctx.createRadialGradient(W/2, H/2, H*0.25, W/2, H/2, H*0.78);
+        const vgn = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.78);
         vgn.addColorStop(0, 'rgba(180,220,255,0)');
         vgn.addColorStop(1, `rgba(120,180,255,${(intensity * 0.28).toFixed(2)})`);
         ctx.fillStyle = vgn;
@@ -401,31 +493,31 @@ function draw() {
     }
 
     // ── РИСУЕМАЯ ЛИНИЯ (LCD) ─────────────────────────────────
-    if(lcdActive && drawPoints.length >= 2){
+    if (lcdActive && drawPoints.length >= 2) {
         ctx.save();
-        ctx.lineCap    = 'round';
-        ctx.lineJoin   = 'round';
-        ctx.lineWidth  = 28;
-        ctx.strokeStyle= 'rgba(255,255,255,0.25)';
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 28;
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
         ctx.beginPath();
         ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
-        for(let i=1; i<drawPoints.length; i++)
+        for (let i = 1; i < drawPoints.length; i++)
             ctx.lineTo(drawPoints[i].x, drawPoints[i].y);
         ctx.stroke();
 
         // Внутренняя яркая линия
-        ctx.lineWidth  = 24;
-        ctx.strokeStyle= 'rgba(255,255,255,0.9)';
-        ctx.shadowColor= '#a0d8ff';
+        ctx.lineWidth = 24;
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.shadowColor = '#a0d8ff';
         ctx.shadowBlur = 28;
         ctx.beginPath();
         ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
-        for(let i=1; i<drawPoints.length; i++)
+        for (let i = 1; i < drawPoints.length; i++)
             ctx.lineTo(drawPoints[i].x, drawPoints[i].y);
         ctx.stroke();
         ctx.restore();
     }
 
     // Закрываем сотрясение экрана
-    if(screenShake > 0) ctx.restore();
+    if (screenShake > 0) ctx.restore();
 }

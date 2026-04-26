@@ -73,6 +73,9 @@ let lastDeathCause   = 'fall';
 const isFirstVisit   = !localStorage.getItem('fg_visited');
 if(isFirstVisit) localStorage.setItem('fg_visited', '1');
 
+// Игровое время (накапливается через effectiveDt — замедляется при LCD)
+let gameTime = 0;
+
 // Medal popup timer
 let medalTimer = 0;
 
