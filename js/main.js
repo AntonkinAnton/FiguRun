@@ -3,6 +3,23 @@
 //  Загружается последним
 // ═══════════════════════════════════════
 
+function resizeCanvas(){
+    const frameBorder = 12; // 6px сверху + 6px снизу
+
+    const scale = Math.min(
+        window.innerWidth / W,
+        (window.innerHeight - frameBorder) / H
+    );
+
+    const displayWidth = W * scale;
+    const displayHeight = H * scale;
+
+    canvas.style.width = displayWidth + 'px';
+    canvas.style.height = displayHeight + 'px';
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
 // Разлёт платформы на куски при megaGrow
 function _smashPlatform(p) {
     if (navigator.vibrate) navigator.vibrate(30)
@@ -466,8 +483,8 @@ window.addEventListener('keydown', e => {
 // Перевод координат события в координаты canvas
 function _eventToCanvas(e) {
     const rect = canvas.getBoundingClientRect();
-    const scaleX = W / rect.width;
-    const scaleY = H / rect.height;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
     const src = e.touches ? e.touches[0] : e;
     return {
         x: (src.clientX - rect.left) * scaleX,
