@@ -43,6 +43,15 @@ const BOOSTER_CONFIG = {
     grow:  { chance: 1.0, startDist: 0, maxPerRun: 3, followChance: 0.5, followInterval: 3 },
 };
 
+// ── НАСТРОЙКИ LCD PICKUP (карандаш) ─────
+// chance     — шанс появления в промежутке между платформами (0..1)
+// startDist  — с какой дистанции начинает появляться (м)
+// maxPerRun  — максимум за один ран (0 = без ограничений)
+const LCD_PICKUP_CONFIG = {
+    chance:    0.9,   // высокий для тестирования
+    startDist: 0,     // с самого начала для тестирования
+    maxPerRun: 3,
+};
 const DEATH_TYPES  = ['explode','dissolve','pop','melt','unravel'];
 const DEATH_TITLES = {
     explode:'💥 ВЗРЫВ!', dissolve:'✨ РАСПАЛСЯ!',

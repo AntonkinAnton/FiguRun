@@ -205,7 +205,7 @@ function update(dt = 1) {
     // Условие для проверки: в воздухе, прыжков нет, летим вниз
     if (!lcdActive && !lcdChecked &&
         !player.grounded && player.jumpsLeft === 0 &&
-        player.vy > 0 && _lcdTestMode && !player.megaGrow) {
+        player.vy > 0 && (lcdInventory > 0 || _lcdTestMode) && !player.megaGrow) {
 
         // Находим 2 ближайшие платформы по X и берём верхнюю (мин. Y) из них
         const nearby = platforms
@@ -335,9 +335,9 @@ function update(dt = 1) {
                     if (p.type === 'lift') player.onLift = p;
                     if (p.type === 'slide') player.onSlide = p;
                     if (p.type === 'spring') {
-                        player.vy = BOUNCE_VY; player.grounded = false;
+                        player.vy = BOUNCE_VY; player.grounded = false; p._springHit = 1;
                         player.onLift = null; player.onSlide = null; player.jumpsLeft = 2;
-                        spawnParticles(player.x + effSize / 2, player.y + effSize, '#ff5722', 12);
+                        spawnParticles(player.x + effSize / 2, player.y + effSize, '#f0eae8dd', 12);
                         break;
                     }
                     if (p.type === 'crumble' && !p.crumbleFalling) { p.crumbleFalling = true; p.crumbleTimer = 15; p.crumbleAlpha = 1; }
@@ -431,6 +431,20 @@ function update(dt = 1) {
         }
     }
     freeCoins = freeCoins.filter(c => !c.collected && (c.x - cameraX) > -80);
+
+    // ── LCD PICKUP — сбор карандашей ────────────────────────
+    for (let p of lcdPickups) {
+        if (p.collected) continue;
+        const px = p.x - cameraX, py = p.y;
+        if (figLeft + effSize > px - 18 && figLeft < px + 18 && player.y < py + 18 && player.y + effSize > py - 18) {
+            p.collected = true;
+            lcdInventory++;
+            spawnParticles(px, py, '#a78bfa', 10, {spd: 1.2, size: 6});
+            showMedal('✏️ Последний штрих');
+            updateLcdHud();
+        }
+    }
+    lcdPickups = lcdPickups.filter(p => !p.collected && (p.x - cameraX) > -80);
 
     if (player.y > H + 80) { lastDeathCause = 'fall'; triggerDeathAnim(player.x + player.size / 2, H - 50); return; }
 
@@ -580,8 +594,11 @@ function _convertDrawToPlat() {
     }
     //if (bridgeX + bridgeW > lastPlatformEnd) lastPlatformEnd = bridgeX + bridgeW;
 
-    // TODO: списать бонус из инвентаря
-    // (сейчас _lcdTestMode=true, бонус не тратится)
+    // Списываем из инвентаря только при успешном создании платформы
+    if (!_lcdTestMode && lcdInventory > 0) {
+        lcdInventory--;
+        updateLcdHud();
+    }
 
     cancelLCD();
     drawPoints = [];

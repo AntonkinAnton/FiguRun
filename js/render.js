@@ -75,8 +75,14 @@ function draw() {
             ctx.fillStyle = '#74c69d';
             ctx.fillRect(sx + margin2 - postW / 2, p.y - postH, postW, postH);
             ctx.fillRect(sx + p.w - margin2 - postW / 2, p.y - postH, postW, postH);
-            const onSp = !player.dead && player.grounded && player.y + player.size >= p.y - 2 && player.x + player.size > sx && player.x < sx + p.w;
-            const sag = onSp ? 8 : 2;
+            // const onSp = !player.dead &&
+            //     player.vy >= 0 && // падаем или только коснулись
+            //     player.y + player.size >= p.y - 2 &&
+            //     player.y + player.size <= p.y + 20 && // узкая зона контакта сверху
+            //     player.x + player.size > sx && player.x < sx + p.w;
+            const sag = p._springHit ? 10 : 2;
+            if (p._springHit) p._springHit *= 0.7;
+            if (p._springHit < 0.05) p._springHit = 0;
             const lx = sx + margin2, rx = sx + p.w - margin2, ty = p.y - postH;
             ctx.beginPath(); ctx.moveTo(lx, ty); ctx.quadraticCurveTo((lx + rx) / 2, ty + sag, rx, ty); ctx.strokeStyle = '#b7e4c7'; ctx.lineWidth = 5; ctx.stroke();
             ctx.beginPath(); ctx.moveTo(lx, ty); ctx.quadraticCurveTo((lx + rx) / 2, ty + sag, rx, ty); ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 2; ctx.stroke();
@@ -128,6 +134,51 @@ function draw() {
         ctx.save(); ctx.translate(bx, by); ctx.scale(pulse, pulse); ctx.shadowColor = bgColor; ctx.shadowBlur = 14; ctx.fillStyle = bgColor;
         ctx.beginPath(); ctx.roundRect(-16, -16, 32, 32, 8); ctx.fill();
         ctx.font = '18px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(icon, 0, 1); ctx.restore();
+    }
+
+    // ── LCD ПИКАПЫ (карандаши) ───────────────────────────────
+    for (let pk of lcdPickups) {
+        if (pk.collected) continue;
+        const px = pk.x - cameraX, py = pk.y;
+        if (px < -30 || px > W + 30) continue;
+        const bob = Math.sin(gameTime / 22 + pk.x) * 5;
+        const cy2 = py + bob;
+
+        ctx.save();
+        ctx.translate(px, cy2);
+
+        // Круглый фон (фиолетовый)
+        ctx.shadowColor = '#a78bfa';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#6d28d9';
+        ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Карандаш — простой и читаемый
+        ctx.rotate(-Math.PI / 4);
+        // Корпус
+        ctx.fillStyle = '#fde68a';
+        ctx.fillRect(-4, -10, 8, 16);
+        // Ластик (верх)
+        ctx.fillStyle = '#fca5a5';
+        ctx.fillRect(-4, -14, 8, 4);
+        // Металлическая полоска
+        ctx.fillStyle = '#d1d5db';
+        ctx.fillRect(-4, -10, 8, 2);
+        // Острие (треугольник)
+        ctx.fillStyle = '#fde68a';
+        ctx.beginPath();
+        ctx.moveTo(-4, 6); ctx.lineTo(4, 6); ctx.lineTo(0, 13);
+        ctx.closePath(); ctx.fill();
+        // Грифель
+        ctx.fillStyle = '#374151';
+        ctx.beginPath();
+        ctx.moveTo(-1.5, 10); ctx.lineTo(1.5, 10); ctx.lineTo(0, 13);
+        ctx.closePath(); ctx.fill();
+
+        ctx.restore();
     }
 
     // ── МИНЫ ─────────────────────────────────────────────────

@@ -183,6 +183,23 @@ function generateNextPlatform() {
     trySpawnHazardsInGap(last.x + last.w, newX, last.y, newY, type === 'slide' || last.type === 'slide');
     lastPlatformEnd = newX + width;
 
+    // ── LCD PICKUP (карандаш) ─────────────────────────────────
+    // Появляется в промежутке между платформами, высоко — сложно достать
+    if (score >= LCD_PICKUP_CONFIG.startDist &&
+        lcdPickupCount < LCD_PICKUP_CONFIG.maxPerRun &&
+        Math.random() < LCD_PICKUP_CONFIG.chance) {
+        const gapW = newX - (last.x + last.w);
+        if (gapW > 80) {
+            const px = last.x + last.w + gapW * (0.3 + Math.random() * 0.4);
+            // Высоко над платформами — нужно 1.5 прыжка
+            const py = Math.min(last.y, newY) - 130 - Math.random() * 50;
+            if (py > 200) {
+                lcdPickups.push({ x: px, y: py, collected: false });
+                lcdPickupCount++;
+            }
+        }
+    }
+
     // ── #3: Страховочная пара для slide ──────────────────────
     // Появляется с шансом 65% после 800м
     if (type === 'slide' && score > 800 && Math.random() < 0.65) {
@@ -246,6 +263,7 @@ function resetGame() {
     cameraX = 0; score = 0; totalCoins = 0;
     currentSpeed = baseSpeed; lastPlatformEnd = 720;
     particles = []; hazards = []; freeCoins = [];
+    lcdPickups = []; lcdPickupCount = 0;
     trailBuf = []; speedTrailBuf = [];
     screenShake = 0;
     gameTime    = 0;

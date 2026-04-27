@@ -29,6 +29,17 @@ function updateCoinsHud(){
 }
 
 // ── ПАУЗА ──────────────────────────────
+function updateLcdHud(){
+    const el = document.getElementById('lcd-hud');
+    if (!el) return;
+    if (lcdInventory > 0) {
+        el.style.display = 'flex';
+        document.getElementById('lcd-count').textContent = `x${lcdInventory}`;
+    } else {
+        el.style.display = 'none';
+    }
+}
+
 function setPauseIcon(isPaused){
     document.getElementById('pause-btn').textContent = isPaused ? '▶' : '⏸';
 }

@@ -79,12 +79,15 @@ let gameTime = 0;
 // Medal popup timer
 let medalTimer = 0;
 
-// ── LAST CHANCE DRAW ───────────────────
+// ── ИНВЕНТАРЬ LCD ──────────────────────
+let lcdInventory    = 0;   // кол-во карандашей у игрока
+let lcdPickups      = [];  // массив пикапов в мире {x, y, collected}
+let lcdPickupCount  = 0;   // счётчик за ран
 let timeScale     = 1;
 let lcdActive     = false;
 let lcdChecked    = false;
 let lcdSlowTarget = 0.12; // динамический target замедления, пересчитывается в activateLCD
-let _lcdTestMode  = true;
+let _lcdTestMode  = false;
 
 // Точки рисуемой линии (экранные координаты)
 let drawPoints    = [];
