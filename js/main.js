@@ -3,7 +3,7 @@
 //  Загружается последним
 // ═══════════════════════════════════════
 
-function resizeCanvas(){
+function resizeCanvas() {
     const frameBorder = 12; // 6px сверху + 6px снизу
 
     const scale = Math.min(
@@ -78,44 +78,63 @@ function _crushMine(h, hx) {
 // ── LAST CHANCE DRAW: симуляция траектории ──────────────
 // Возвращает true если игрок гарантированно упадёт в пропасть
 function _predictWillDie() {
-    const SIM_STEPS = 240;          // ~4 сек при 60fps
+    const SIM_STEPS = 240;
     const SIM_DT = 1;
+
+    // ⚠️ ДОЛЖНО совпадать с реальной физикой
+    const SUBSTEPS = 2;
+    const SUB_DT = SIM_DT / SUBSTEPS;
+
     const pSize = player.size * player.growScale;
 
-    // Снимок состояния
     let sy = player.y;
     let svy = player.vy;
-    let scx = cameraX;              // камера тоже движется
+    let scx = cameraX;
 
     for (let i = 0; i < SIM_STEPS; i++) {
-        svy += GRAVITY * SIM_DT;
-        sy += svy * SIM_DT;
-        scx += currentSpeed * SIM_DT;
 
-        // Упал за экран — погибнет
-        if (sy > H + 80) return true;
+        for (let s = 0; s < SUBSTEPS; s++) {
 
-        // Проверяем платформы (берём их текущее положение — достаточно точно)
-        for (let p of platforms) {
-            if (p.dead) continue;
-            const px = p.x - scx;
-            if (player.x + pSize > px && player.x < px + p.w &&
-                svy >= 0 &&
-                sy + pSize >= p.y && sy + pSize - svy * SIM_DT <= p.y + 8) {
-                return false; // найдена платформа — выживет
+            // гравитация
+            svy += GRAVITY * SUB_DT;
+
+            // сохраняем прошлую позицию (ключ к точной коллизии)
+            const prevY = sy;
+
+            // движение
+            sy += svy * SUB_DT;
+            scx += currentSpeed * SUB_DT;
+
+            // падение вниз
+            if (sy > H + 80) return true;
+
+            // проверка платформ
+            for (let p of platforms) {
+                if (p.dead) continue;
+
+                const px = p.x - scx;
+
+                // 🔥 ТА ЖЕ логика, что в реальной физике
+                if (
+                    player.x + pSize > px &&
+                    player.x < px + p.w &&
+                    svy >= 0 &&
+                    sy + pSize >= p.y &&
+                    prevY + pSize <= p.y + 8
+                ) {
+                    // нашли платформу — смерть не наступит
+                    return false;
+                }
             }
-        }
 
-        // Проверяем мины (при контакте с миной игрок тоже не упадёт в пропасть)
-        for (let h of hazards) {
-            const hx = h.x - scx;
-            if (Math.hypot(hx + h.r - (player.x + pSize / 2), h.y - (sy + pSize / 2)) < h.r + pSize * 0.35) {
-                return false; // мина остановит
+            for (let h of hazards) {
+                const hx = h.x - scx;
+                if (Math.hypot(hx + h.r - (player.x + pSize / 2), h.y - (sy + pSize / 2)) < h.r + pSize * 0.35) {
+                    return false; // мина остановит
+                }
             }
         }
     }
-
-    return true; // за 4 секунды ничего не встретил — упадёт
 }
 
 // ── LAST CHANCE DRAW: плавное изменение timeScale ───────
@@ -439,7 +458,7 @@ function update(dt = 1) {
         if (figLeft + effSize > px - 18 && figLeft < px + 18 && player.y < py + 18 && player.y + effSize > py - 18) {
             p.collected = true;
             lcdInventory++;
-            spawnParticles(px, py, '#a78bfa', 10, {spd: 1.2, size: 6});
+            spawnParticles(px, py, '#a78bfa', 10, { spd: 1.2, size: 6 });
             showMedal('✏️ Последний штрих');
             updateLcdHud();
         }
@@ -507,15 +526,15 @@ function _eventToCanvas(e) {
 }
 
 // Проверка нажатия на кнопку ПРОПУСТИТЬ (LCD overlay)
-function _checkSkipBtn(e){
+function _checkSkipBtn(e) {
     const p = _eventToCanvas(e);
-    const btnX=16, btnY=128, btnW=150, btnH=38;
-    return p.x>=btnX && p.x<=btnX+btnW && p.y>=btnY && p.y<=btnY+btnH;
+    const btnX = 16, btnY = 128, btnW = 150, btnH = 38;
+    return p.x >= btnX && p.x <= btnX + btnW && p.y >= btnY && p.y <= btnY + btnH;
 }
 
 canvas.addEventListener('mousedown', e => {
     if (lcdActive) {
-        if(_checkSkipBtn(e)){ cancelLCD(); drawPoints=[]; return; }
+        if (_checkSkipBtn(e)) { cancelLCD(); drawPoints = []; return; }
         const p = _eventToCanvas(e);
         isDrawing = true;
         drawPoints = [p];
@@ -529,7 +548,7 @@ canvas.addEventListener('mousemove', e => {
 });
 // ── LAST CHANCE DRAW: конвертация линии в платформу ─────
 function _convertDrawToPlat() {
-    if (drawPoints.length < 2) {drawPoints = []; return; }
+    if (drawPoints.length < 2) { drawPoints = []; return; }
 
     const xs = drawPoints.map(p => p.x);
     const ys = drawPoints.map(p => p.y);
@@ -538,7 +557,7 @@ function _convertDrawToPlat() {
     const w = x2 - x1;
 
     // Слишком короткая — считаем случайным тапом, бонус не тратим
-    if (w < 60) {drawPoints = []; return; }
+    if (w < 60) { drawPoints = []; return; }
 
     const avgY = ys.reduce((a, b) => a + b, 0) / ys.length;
 
@@ -587,7 +606,7 @@ function _convertDrawToPlat() {
             const bridge = createPlatform(cameraX + W + 100, bridgeY, bridgeW, 'normal');
             bridge.isBridge = true;
             bridge.spawning = true;
-            bridge.targetX  = bridgeX;
+            bridge.targetX = bridgeX;
             bridge.lcdAlpha = 0;
             platforms.push(bridge);
         }
@@ -614,7 +633,7 @@ canvas.addEventListener('mouseup', () => {
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     if (lcdActive) {
-        if(_checkSkipBtn(e)){ cancelLCD(); drawPoints=[]; return; }
+        if (_checkSkipBtn(e)) { cancelLCD(); drawPoints = []; return; }
         const p = _eventToCanvas(e);
         isDrawing = true;
         drawPoints = [p];

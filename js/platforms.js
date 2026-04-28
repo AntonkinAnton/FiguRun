@@ -191,8 +191,8 @@ function generateNextPlatform() {
         const gapW = newX - (last.x + last.w);
         if (gapW > 80) {
             const px = last.x + last.w + gapW * (0.3 + Math.random() * 0.4);
-            // Высоко над платформами — нужно 1.5 прыжка
-            const py = Math.min(last.y, newY) - 130 - Math.random() * 50;
+            // Высоко над платформами — нужно 2 прыжка
+            const py = Math.min(last.y, newY) - 300 - Math.random() * 50; // настройки высоты
             if (py > 200) {
                 lcdPickups.push({ x: px, y: py, collected: false });
                 lcdPickupCount++;

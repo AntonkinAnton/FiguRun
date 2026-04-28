@@ -40,7 +40,7 @@ const BOOSTER_CONFIG = {
     jump:  { chance: 1.0, startDist:   0, maxPerRun: 0 },
     speed: { chance: 1.0, startDist:   0, maxPerRun: 0 },
     shield:{ chance: 1.0, startDist:   0, maxPerRun: 0 },
-    grow:  { chance: 1.0, startDist: 0, maxPerRun: 3, followChance: 0.5, followInterval: 3 },
+    grow:  { chance: 1.0, startDist: 0, maxPerRun: 0, followChance: 0.5, followInterval: 3 },
 };
 
 // ── НАСТРОЙКИ LCD PICKUP (карандаш) ─────
@@ -50,7 +50,7 @@ const BOOSTER_CONFIG = {
 const LCD_PICKUP_CONFIG = {
     chance:    0.9,   // высокий для тестирования
     startDist: 0,     // с самого начала для тестирования
-    maxPerRun: 3,
+    maxPerRun: 1,
 };
 const DEATH_TYPES  = ['explode','dissolve','pop','melt','unravel'];
 const DEATH_TITLES = {
@@ -63,7 +63,7 @@ const DEATH_TITLES = {
 //                      независимо от того, высоко или низко сработал LCD
 // LCD_LERP_IN        — скорость нарастания замедления
 // LCD_LERP_OUT       — скорость возврата к норме
-const LCD_PLAYER_SECONDS = 10;
+const LCD_PLAYER_SECONDS = 8;
 const LCD_LERP_IN        = 0.28;
 const LCD_LERP_OUT       = 0.06;
 
