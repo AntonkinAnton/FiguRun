@@ -263,6 +263,7 @@ function resetGame() {
     cameraX = 0; score = 0; totalCoins = 0;
     currentSpeed = baseSpeed; lastPlatformEnd = 720;
     particles = []; hazards = []; freeCoins = [];
+    lcdInventory = save.lcdCharges;
     lcdPickups = []; lcdPickupCount = 0;
     trailBuf = []; speedTrailBuf = [];
     screenShake = 0;

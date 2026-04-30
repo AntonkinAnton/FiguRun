@@ -19,6 +19,9 @@ function resizeCanvas() {
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
+drawCoinIcon();
+updateLcdHud();
+updateCoinsHud();
 
 // Разлёт платформы на куски при megaGrow
 function _smashPlatform(p) {
@@ -429,7 +432,7 @@ function update(dt = 1) {
             const cx = p.x + c.relX - cameraX, cy = p.y - 28;
             if (figLeft + effSize > cx - 12 && figLeft < cx + 12 && player.y < cy + 12 && player.y + effSize > cy - 12) {
                 c.collected = true; totalCoins++; allTimeCoins++;
-                localStorage.setItem('cubeRunnerATC', allTimeCoins);
+                save.allTimeCoins = allTimeCoins; saveSave();
                 spawnParticles(cx, cy, '#f1c40f', 7);
                 updateCoinsHud();
             }
@@ -453,7 +456,7 @@ function update(dt = 1) {
         const cx = c.x - cameraX, cy = c.y;
         if (figLeft + effSize > cx - 12 && figLeft < cx + 12 && player.y < cy + 12 && player.y + effSize > cy - 12) {
             c.collected = true; totalCoins++; allTimeCoins++;
-            localStorage.setItem('cubeRunnerATC', allTimeCoins);
+            save.allTimeCoins = allTimeCoins; saveSave();
             spawnParticles(cx, cy, '#f1c40f', 7);
             updateCoinsHud();
         }
@@ -470,6 +473,7 @@ function update(dt = 1) {
             spawnParticles(px, py, '#a78bfa', 10, { spd: 1.2, size: 6 });
             showMedal('✏️ Последний штрих');
             updateLcdHud();
+            save.lcdCharges = lcdInventory; saveSave();
         }
     }
     lcdPickups = lcdPickups.filter(p => !p.collected && (p.x - cameraX) > -80);
@@ -626,6 +630,7 @@ function _convertDrawToPlat() {
     if (!_lcdTestMode && lcdInventory > 0) {
         lcdInventory--;
         updateLcdHud();
+        save.lcdCharges = lcdInventory; saveSave();
     }
 
     cancelLCD();

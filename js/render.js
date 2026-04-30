@@ -423,7 +423,7 @@ function draw() {
     if (player.growTimer > 0) {
         const f = player.megaGrow ? player.growTimer / MEGA_GROW_DUR : player.growTimer / GROW_DUR;
         ctx.fillStyle = '#e74c3c'; ctx.fillRect(16, hudY, 120 * f, 8); ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 2; ctx.strokeRect(16, hudY, 120, 8);
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(player.megaGrow ?'🔥':'💪', 16, hudY + 20);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(player.megaGrow ? '🔥' : '💪', 16, hudY + 20);
     }
 
     // Затемнение при паузе
@@ -432,13 +432,24 @@ function draw() {
     }
 
     // ── LCD UI OVERLAY ────────────────────────────────────────
+    const lcdEl = document.getElementById('lcd-hud');
+    const lcdIcon = document.getElementById('lcd-icon');
+    const t = performance.now() / 1000;
+    const scale = 1 + Math.sin(t * 6) * 0.12;
+    const alpha = 0.85 + Math.sin(t * 4) * 0.15;
+
+    // Пульсация иконки lcd в HUD
+
+    if (lcdEl) {
+        if (lcdActive) {
+            lcdIcon.style.transform = `scale(${scale.toFixed(3)})`;
+        } else {
+            // сбрасываем когда lcd не активен
+            lcdIcon.style.transform = '';
+        }
+    } 
     if (lcdActive) {
-
         const text = 'РИСУЙ ПЛАТФОРМУ!';
-
-        const t = performance.now() / 1000;
-        const scale = 1 + Math.sin(t * 6) * 0.12;
-        const alpha = 0.85 + Math.sin(t * 4) * 0.15;
 
         ctx.save();
 
