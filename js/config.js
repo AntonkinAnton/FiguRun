@@ -42,7 +42,7 @@ const BOOSTER_CONFIG = {
     jump:  { chance: 1.0, startDist:   0, maxPerRun: 0 },
     speed: { chance: 1.0, startDist:   0, maxPerRun: 0 },
     shield:{ chance: 1.0, startDist:   0, maxPerRun: 0 },
-    grow:  { chance: 1.0, startDist: 0, maxPerRun: 0, followChance: 0.5, followInterval: 3 },
+    grow:  { chance: 1.0, startDist: 0, maxPerRun: 3, followChance: 0.5, followInterval: 3 },
 };
 
 // ── НАСТРОЙКИ LCD PICKUP (карандаш) ─────
