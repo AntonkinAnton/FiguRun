@@ -5,7 +5,7 @@
 
 function applyBooster(type, x, y){
     if(type==='jump'){
-        player.superJumpTimer = 300;
+        player.superJumpTimer = SUPER_JUMP_DUR;
         spawnParticles(x, y, '#00e5ff', 12);
         showMedal('⚡ Супер-прыжок!');
     } else if(type==='speed'){
@@ -14,7 +14,7 @@ function applyBooster(type, x, y){
         showMedal('🚀 Ускорение!');
     } else if(type==='shield'){
         player.shield      = true;
-        player.shieldTimer = 400;
+        player.shieldTimer = SHIELD_DUR;
         spawnParticles(x, y, '#8bc34a', 12);
         showMedal('🛡️ Щит!');
     } else if(type==='grow'){

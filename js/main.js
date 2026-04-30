@@ -130,7 +130,16 @@ function _predictWillDie() {
             for (let h of hazards) {
                 const hx = h.x - scx;
                 if (Math.hypot(hx + h.r - (player.x + pSize / 2), h.y - (sy + pSize / 2)) < h.r + pSize * 0.35) {
-                    return false; // мина остановит
+                    // Считаем сколько кадров прошло в симуляции
+                    const simFrame = i * SUBSTEPS + s;
+                    // Щит ещё будет активен в этот момент?
+                    const shieldActive = player.shield && player.shieldTimer > simFrame;
+                    // Grow ещё будет активен?
+                    const growActive = player.growTimer > simFrame;
+                    if (!shieldActive && !growActive) {
+                        return false; // мина остановит — бустеров нет
+                    }
+                    // Бустер активен — мина не остановит, продолжаем симуляцию
                 }
             }
         }

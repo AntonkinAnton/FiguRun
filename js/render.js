@@ -411,19 +411,19 @@ function draw() {
         ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('🚀', 16, hudY + 20); hudY += 30;
     }
     if (player.superJumpTimer > 0) {
-        const f = player.superJumpTimer / 300;
+        const f = player.superJumpTimer / SUPER_JUMP_DUR;
         ctx.fillStyle = '#00bcd4'; ctx.fillRect(16, hudY, 120 * f, 8); ctx.strokeStyle = '#00bcd4'; ctx.lineWidth = 2; ctx.strokeRect(16, hudY, 120, 8);
         ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('⚡', 16, hudY + 20); hudY += 30;
     }
     if (player.shield) {
-        const f = player.shieldTimer / 400;
+        const f = player.shieldTimer / SHIELD_DUR;
         ctx.fillStyle = '#8bc34a'; ctx.fillRect(16, hudY, 120 * f, 8); ctx.strokeStyle = '#8bc34a'; ctx.lineWidth = 2; ctx.strokeRect(16, hudY, 120, 8);
         ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('🛡️', 16, hudY + 20); hudY += 30;
     }
     if (player.growTimer > 0) {
-        const f = player.growTimer / GROW_DUR;
+        const f = player.megaGrow ? player.growTimer / MEGA_GROW_DUR : player.growTimer / GROW_DUR;
         ctx.fillStyle = '#e74c3c'; ctx.fillRect(16, hudY, 120 * f, 8); ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 2; ctx.strokeRect(16, hudY, 120, 8);
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('💪', 16, hudY + 20);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(player.megaGrow ?'🔥':'💪', 16, hudY + 20);
     }
 
     // Затемнение при паузе
