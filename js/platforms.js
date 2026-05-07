@@ -267,7 +267,7 @@ function resetGame() {
     lcdPickups = []; lcdPickupCount = 0;
     trailBuf = []; speedTrailBuf = [];
     screenShake = 0;
-    gameTime    = 0;
+    gameTime = 0;
     timeScale = 1;
     lcdActive = false;
     lcdChecked = false;
@@ -276,6 +276,9 @@ function resetGame() {
     isDrawing = false;
     MEDALS = buildMedals();
     boosterState = { lastType: null, platformsSinceLast: 0, minInterval: 4, maxInterval: 9 };
+    respawnState = null;
+    lastSafePlatform = null;
+    livesInventory = _livesTestMode ? 3 : save.lives;
     nextBoosterIn = 5;
     boosterRunCount = { jump: 0, speed: 0, shield: 0, grow: 0 };
     pendingFollowGrow = false;
@@ -290,6 +293,7 @@ function resetGame() {
     for (let i = 0; i < 14; i++) generateNextPlatform();
 
     updateCoinsHud();
+    updateLivesHud();
     drawCoinIcon();
     document.getElementById('score').textContent = '0 м';
 }

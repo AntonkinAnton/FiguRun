@@ -150,6 +150,16 @@
             color: #f1c40f;
         }
 
+        #lives-hud {
+            position: absolute;
+            right: 90px;
+            top: 38px;
+            display: none;
+            align-items: center;
+            gap: 3px;
+            color: #e74c3c;
+        }
+
         .medal-popup {
             position: absolute;
             top: 50%;
@@ -265,6 +275,10 @@
         <div id="coins-hud">
             <div id="lcd-hud">
                 <span id="lcd-icon">✏️</span><span id="lcd-count" style="font-size:1.0em;font-weight:bold;">x0</span>
+            </div>
+            <div id="lives-hud">
+                <span id="lives-icon">❤️</span><span id="lives-count"
+                    style="font-size:1.0em;font-weight:bold;">x0</span>
             </div>
             <div id="coins-session" style="display:flex;align-items:center;gap:8px;">
 

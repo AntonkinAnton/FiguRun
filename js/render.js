@@ -447,7 +447,7 @@ function draw() {
             // сбрасываем когда lcd не активен
             lcdIcon.style.transform = '';
         }
-    } 
+    }
     if (lcdActive) {
         const text = 'РИСУЙ ПЛАТФОРМУ!';
 
@@ -587,4 +587,98 @@ function draw() {
 
     // Закрываем сотрясение экрана
     if (screenShake > 0) ctx.restore();
+
+        // ── ЖИЗНИ: вспышка возрождения ───────────────────────────
+    if (respawnFlash > 0) {
+        ctx.save();
+        ctx.globalAlpha = respawnFlash;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+    }
+
+    // ── ЖИЗНИ: экран решения ─────────────────────────────────
+    if (respawnState && respawnState.phase === 'decision') {
+        const rs = respawnState;
+        const progress = rs.timer / (LIVES_DECISION_SEC * 60);
+        const f = rs.fadeIn; // 0..1, нарастает в update
+
+        // Ч/б фильтр — плавно нарастает
+        ctx.save();
+        ctx.globalAlpha = 0.55 * f;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'saturation';
+        ctx.globalAlpha = 0.92 * f;
+        ctx.fillStyle = '#888';
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+
+        // Пульсирующий текст (как "РИСУЙ ПЛАТФОРМУ!")
+        const t = performance.now() / 1000;
+        const scale = 1 + Math.sin(t * 6) * 0.10;
+        const alpha = (0.85 + Math.sin(t * 4) * 0.15) * f;
+        const text = 'ПРОДОЛЖИТЬ?';
+        const fontSize = Math.round(W * 0.072);
+
+        ctx.save();
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        const textWidth = ctx.measureText(text).width;
+        ctx.translate(W / 2, H * 0.34);
+        ctx.scale(scale, scale);
+        ctx.globalAlpha = alpha;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#ff4444';
+        ctx.shadowBlur = 18;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(200,0,0,0.5)';
+        ctx.strokeText(text, 0, 0);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(text, 0, 0);
+        ctx.restore();
+
+
+        // Круг таймера
+        const cx = W / 2, cy = H * 0.50, cr = 54;
+        ctx.save();
+        // фон круга
+        ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill();
+        // дуга прогресса
+        ctx.beginPath();
+        ctx.arc(cx, cy, cr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+        ctx.strokeStyle = progress > 0.4 ? '#f1c40f' : '#e74c3c';
+        ctx.lineWidth = 7; ctx.stroke();
+        // цифра внутри
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${Math.round(cr * 0.72)}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(Math.ceil(rs.timer / 60), cx, cy);
+        ctx.restore();
+
+        // Кнопка ❤️ (продолжить)
+        const btnY = H * 0.66;
+        const btnR = 44;
+        // левая — сердце
+        ctx.save();
+        ctx.beginPath(); ctx.arc(W / 2 - 80, btnY, btnR, 0, Math.PI * 2);
+        ctx.fillStyle = '#c0392b'; ctx.fill();
+        ctx.font = `${Math.round(btnR * 1.1)}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('❤️', W / 2 - 80, btnY + 2);
+        ctx.restore();
+
+        // правая — крест
+        ctx.save();
+        ctx.beginPath(); ctx.arc(W / 2 + 80, btnY, btnR, 0, Math.PI * 2);
+        ctx.fillStyle = '#555'; ctx.fill();
+        ctx.font = `${Math.round(btnR * 1.1)}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('✖️', W / 2 + 80, btnY + 2);
+        ctx.restore();
+    }
 }

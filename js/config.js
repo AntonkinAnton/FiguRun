@@ -69,6 +69,14 @@ const LCD_PLAYER_SECONDS = 8;
 const LCD_LERP_IN        = 0.28;
 const LCD_LERP_OUT       = 0.06;
 
+// ── НАСТРОЙКИ ЖИЗНЕЙ (Lives / Respawn) ──
+// LIVES_DECISION_SEC   — секунд на решение (продолжить / нет)
+// LIVES_SLOW_DUR       — кадров плавного возврата скорости после возрождения
+// LIVES_SLOW_MUL       — множитель скорости сразу после возрождения (0..1)
+const LIVES_DECISION_SEC = 5;
+const LIVES_SLOW_DUR     = 300;
+const LIVES_SLOW_MUL     = 0.5;
+
 function buildMedals(){
     const f=[
         {dist:500,label:'🥉 500 м!'},{dist:2000,label:'🥈 2000 м!'},

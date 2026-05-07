@@ -115,6 +115,19 @@ let _lcdTestMode = false;
 let drawPoints = [];
 let isDrawing = false;
 
+// ── ЖИЗНИ ──────────────────────────────
+let _livesTestMode = true;
+let livesInventory = 3;
+
+// Состояние механики возрождения
+// phase: null | 'decision' | 'respawning'
+let respawnState = null;
+
+// Последняя надёжная платформа (обновляется при grounded)
+let lastSafePlatform = null;
+let respawnFlash = 0; // 1..0, яркость вспышки
+
+
 // Админ-панель - Добавляешь в  main.js объект window.admin:
 // javascriptwindow.admin = {
 //     addCoins: (n) => { allTimeCoins += n; save.allTimeCoins = allTimeCoins; saveSave(); updateCoinsHud(); },

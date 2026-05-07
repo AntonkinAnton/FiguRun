@@ -40,6 +40,16 @@ function updateLcdHud() {
     }
 }
 
+function updateLivesHud() {
+    const el = document.getElementById('lives-hud');
+    if (!el) return;
+    if (livesInventory > 0) {
+        el.style.display = 'flex';
+        document.getElementById('lives-count').textContent = `x${livesInventory}`;
+    } else {
+        el.style.display = 'none';
+    }
+}
 
 function setPauseIcon(isPaused) {
     document.getElementById('pause-btn').textContent = isPaused ? '▶' : '⏸';

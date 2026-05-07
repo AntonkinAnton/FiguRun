@@ -157,6 +157,57 @@ function _updateTimeScale(dt) {
     if (Math.abs(timeScale - target) < 0.005) timeScale = target;
 }
 
+// ── ЖИЗНИ: выполнить возрождение ────────────────────────
+function _doRespawn() {
+    const rs = respawnState;
+    const plat = rs.platform;
+
+    // Списываем жизнь
+    livesInventory--;
+    if (!_livesTestMode) { save.lives = livesInventory; saveSave(); }
+    updateLivesHud();
+
+    // Уничтожаем все мины
+    for (let h of hazards) {
+        const hx = h.x - cameraX;
+        _crushMine(h, hx);
+    }
+    hazards = [];
+
+    // Ставим игрока на платформу (мировые координаты)
+    const effSize = player.size; // growScale сброшен, используем base size
+    // Центрируем на платформе, но не дальше правого края экрана
+    const targetWorldX = plat.x + plat.w / 2 - effSize / 2;
+    // Подгоняем камеру так чтобы платформа была видна (~30% от левого края)
+    cameraX = plat.x - W * 0.3;
+    player.x = targetWorldX - cameraX;
+    player.y = plat.y - effSize;
+    player.vy = 0;
+    player.grounded = true;
+    player.jumpsLeft = 2;
+    player.dead = false;
+    player.deathAnim = null;
+    player.shield = false;
+    player.shieldTimer = 0;
+    player.growTimer = 0;
+    player.growScale = 1;
+    player.shrinkGrace = 60;
+    player.megaGrow = false;
+
+    // Вспышка
+    screenShake = 18;
+    respawnFlash = 1;
+
+    // Замедление скорости
+    currentSpeed = rs.speedAtDeath * LIVES_SLOW_MUL;
+
+    respawnState = {
+        phase: 'respawning',
+        speedAtDeath: rs.speedAtDeath,
+        slowTimer: LIVES_SLOW_DUR,
+    };
+}
+
 // ── LAST CHANCE DRAW: деактивация (линия нарисована или отменена) ─
 function cancelLCD() {
     lcdActive = false;
@@ -177,6 +228,31 @@ function activateLCD(triggerY) {
 
 function update(dt = 1) {
     if (paused) return;
+
+    // Нарастание fadeIn для экрана решения (жизни)
+    if (respawnState && respawnState.phase === 'decision') {
+        respawnState.fadeIn = Math.min(1, respawnState.fadeIn + 0.018 * dt);
+        respawnState.timer -= dt;
+        if (respawnState.timer <= 0) {
+            // Время вышло — показываем обычный gameover
+            respawnState = null;
+            showGameOver();
+        }
+    }
+    // Плавный возврат скорости после возрождения
+    if (respawnState && respawnState.phase === 'respawning') {
+        respawnState.slowTimer -= dt;
+        if (respawnState.slowTimer <= 0) {
+            respawnState = null;
+        } else {
+            const t = 1 - (respawnState.slowTimer / LIVES_SLOW_DUR);
+            const minSpd = respawnState.speedAtDeath * LIVES_SLOW_MUL;
+            currentSpeed = minSpd + (respawnState.speedAtDeath - minSpd) * t;
+        }
+    }
+    
+    // Затухание вспышки
+    if (respawnFlash > 0) respawnFlash = Math.max(0, respawnFlash - 0.045 * dt);
 
     // Анимация смерти и частицы (работают даже после смерти)
     if (player.dead) {
@@ -365,6 +441,7 @@ function update(dt = 1) {
                     if (lcdActive) cancelLCD(); // приземлились — LCD больше не нужен
                     if (p.type === 'lift') player.onLift = p;
                     if (p.type === 'slide') player.onSlide = p;
+                    if (['normal', 'lift', 'slide'].includes(p.type)) lastSafePlatform = p;
                     if (p.type === 'spring') {
                         player.vy = BOUNCE_VY; player.grounded = false; p._springHit = 1;
                         player.onLift = null; player.onSlide = null; player.jumpsLeft = 2;
@@ -537,7 +614,16 @@ function _eventToCanvas(e) {
         y: (src.clientY - rect.top) * scaleY
     };
 }
-
+// Проверка кнопок возрождения (жизни)
+function _checkRespawnBtns(e) {
+    if (!respawnState || respawnState.phase !== 'decision') return null;
+    const p = _eventToCanvas(e);
+    const btnY = H * 0.66, btnR = 44;
+    const heartX = W / 2 - 80, crossX = W / 2 + 80;
+    if (Math.hypot(p.x - heartX, p.y - btnY) <= btnR) return 'heart';
+    if (Math.hypot(p.x - crossX, p.y - btnY) <= btnR) return 'cross';
+    return null;
+}
 // Проверка нажатия на кнопку ПРОПУСТИТЬ (LCD overlay)
 function _checkSkipBtn(e) {
     const p = _eventToCanvas(e);
@@ -546,6 +632,12 @@ function _checkSkipBtn(e) {
 }
 
 canvas.addEventListener('mousedown', e => {
+    if (respawnState && respawnState.phase === 'decision') {
+        const btn = _checkRespawnBtns(e);
+        if (btn === 'heart') { _doRespawn(); return; }
+        if (btn === 'cross') { respawnState = null; showGameOver(); return; }
+        return;
+    }
     if (lcdActive) {
         if (_checkSkipBtn(e)) { cancelLCD(); drawPoints = []; return; }
         const p = _eventToCanvas(e);
@@ -646,6 +738,12 @@ canvas.addEventListener('mouseup', () => {
 
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
+    if (respawnState && respawnState.phase === 'decision') {
+        const btn = _checkRespawnBtns(e);
+        if (btn === 'heart') { _doRespawn(); return; }
+        if (btn === 'cross') { respawnState = null; showGameOver(); return; }
+        return;
+    }
     if (lcdActive) {
         if (_checkSkipBtn(e)) { cancelLCD(); drawPoints = []; return; }
         const p = _eventToCanvas(e);
@@ -655,6 +753,7 @@ canvas.addEventListener('touchstart', e => {
         jump();
     }
 }, { passive: false });
+
 canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     if (!lcdActive || !isDrawing) return;
