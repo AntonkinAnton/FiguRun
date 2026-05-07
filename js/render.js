@@ -3,6 +3,13 @@
 //  Загружается после state.js
 // ═══════════════════════════════════════
 
+function _drawShape(s) {
+    if (currentShape === 'square') { ctx.fillRect(-s / 2, -s / 2, s, s); }
+    else if (currentShape === 'circle') { ctx.beginPath(); ctx.arc(0, 0, s / 2, 0, Math.PI * 2); ctx.fill(); }
+    else if (currentShape === 'triangle') { ctx.beginPath(); ctx.moveTo(0, -s / 2); ctx.lineTo(s / 2, s / 2); ctx.lineTo(-s / 2, s / 2); ctx.closePath(); ctx.fill(); }
+    else if (currentShape === 'diamond') { ctx.beginPath(); ctx.moveTo(0, -s / 2); ctx.lineTo(s / 2, 0); ctx.lineTo(0, s / 2); ctx.lineTo(-s / 2, 0); ctx.closePath(); ctx.fill(); }
+}
+
 function drawParticle(pt) {
     ctx.save(); ctx.globalAlpha = pt.life; ctx.fillStyle = pt.color;
     if (pt.shape === 'square') { ctx.fillRect(pt.x - pt.size * pt.life / 2, pt.y - pt.size * pt.life / 2, pt.size * pt.life, pt.size * pt.life); }
@@ -588,7 +595,37 @@ function draw() {
     // Закрываем сотрясение экрана
     if (screenShake > 0) ctx.restore();
 
-        // ── ЖИЗНИ: вспышка возрождения ───────────────────────────
+    // ── ЖИЗНИ: силуэт в фазе rewind ─────────────────────────
+    if (respawnState && respawnState.phase === 'rewind') {
+        const rs = respawnState;
+        const s = player.size;
+        const progress = 1 - (rs.rewindTimer / 72);
+
+        // Trail — несколько копий позади
+        for (let i = 0; i < 5; i++) {
+            const tp = Math.max(0, progress - i * 0.06);
+            const tx = rs.deathX + (rs.targetX - rs.deathX) * tp;
+            const ty = rs.deathY + (rs.targetY - rs.deathY) * tp;
+            ctx.save();
+            ctx.globalAlpha = (0.35 - i * 0.06) * (1 - i * 0.15);
+            ctx.translate(tx, ty);
+            ctx.fillStyle = currentPlayerColor;
+            _drawShape(s * (0.7 + i * 0.05));
+            ctx.restore();
+        }
+
+        // Основной силуэт
+        ctx.save();
+        ctx.globalAlpha = 0.92;
+        ctx.translate(rs.figX, rs.figY);
+        ctx.fillStyle = currentPlayerColor;
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 18;
+        _drawShape(s);
+        ctx.restore();
+    }
+
+    // ── ЖИЗНИ: вспышка возрождения ───────────────────────────
     if (respawnFlash > 0) {
         ctx.save();
         ctx.globalAlpha = respawnFlash;

@@ -167,44 +167,43 @@ function _doRespawn() {
     if (!_livesTestMode) { save.lives = livesInventory; saveSave(); }
     updateLivesHud();
 
-    // Уничтожаем все мины
-    for (let h of hazards) {
-        const hx = h.x - cameraX;
-        _crushMine(h, hx);
+    // Убиваем все частицы, запускаем новые — летят к точке смерти
+    particles = [];
+    const deathX = rs.deathX, deathY = rs.deathY;
+    for (let i = 0; i < 20; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const dist = 60 + Math.random() * 120;
+        particles.push({
+            x: deathX + Math.cos(a) * dist,
+            y: deathY + Math.sin(a) * dist,
+            vx: -Math.cos(a) * (2 + Math.random() * 2),
+            vy: -Math.sin(a) * (2 + Math.random() * 2),
+            life: 1, decay: 0.008,
+            size: 4 + Math.random() * 6,
+            color: currentPlayerColor, shape: 'circle'
+        });
     }
-    hazards = [];
 
-    // Ставим игрока на платформу (мировые координаты)
-    const effSize = player.size; // growScale сброшен, используем base size
-    // Центрируем на платформе, но не дальше правого края экрана
+    // Целевая позиция фигуры на платформе (экранные координаты зафиксированы)
+    const effSize = player.size;
     const targetWorldX = plat.x + plat.w / 2 - effSize / 2;
-    // Подгоняем камеру так чтобы платформа была видна (~30% от левого края)
-    cameraX = plat.x - W * 0.3;
-    player.x = targetWorldX - cameraX;
-    player.y = plat.y - effSize;
-    player.vy = 0;
-    player.grounded = true;
-    player.jumpsLeft = 2;
-    player.dead = false;
-    player.deathAnim = null;
-    player.shield = false;
-    player.shieldTimer = 0;
-    player.growTimer = 0;
-    player.growScale = 1;
-    player.shrinkGrace = 60;
-    player.megaGrow = false;
-
-    // Вспышка
-    screenShake = 18;
-    respawnFlash = 1;
-
-    // Замедление скорости
-    currentSpeed = rs.speedAtDeath * LIVES_SLOW_MUL;
+    const targetScreenX = targetWorldX - cameraX;
+    const targetScreenY = plat.y - effSize;
 
     respawnState = {
-        phase: 'respawning',
+        phase: 'rewind',
+        platform: plat,
         speedAtDeath: rs.speedAtDeath,
-        slowTimer: LIVES_SLOW_DUR,
+        deathX, deathY,
+        // Силуэт летит от точки смерти к платформе
+        figX: deathX,   // текущая экранная X силуэта
+        figY: deathY,
+        targetX: targetScreenX,
+        targetY: targetScreenY,
+        rewindTimer: 72, // ~1.2 сек при 60fps
+        landTimer: 0,
+        slowTimer: 0,
+        fadeIn: rs.fadeIn,
     };
 }
 
@@ -230,27 +229,84 @@ function update(dt = 1) {
     if (paused) return;
 
     // Нарастание fadeIn для экрана решения (жизни)
-    if (respawnState && respawnState.phase === 'decision') {
-        respawnState.fadeIn = Math.min(1, respawnState.fadeIn + 0.018 * dt);
-        respawnState.timer -= dt;
-        if (respawnState.timer <= 0) {
-            // Время вышло — показываем обычный gameover
-            respawnState = null;
-            showGameOver();
+    // ── ЖИЗНИ: машина состояний ──────────────────────────────
+    if (respawnState) {
+        const rs = respawnState;
+
+        if (rs.phase === 'decision') {
+            // Замедляем мир
+            livesTimeScale = Math.max(0.15, livesTimeScale - 0.025 * dt);
+            // Нарастание ч/б
+            rs.fadeIn = Math.min(1, rs.fadeIn + 0.018 * dt);
+            rs.timer -= dt;
+            if (rs.timer <= 0) {
+                livesTimeScale = 1;
+                respawnState = null;
+                showGameOver();
+            }
+        }
+
+        else if (rs.phase === 'rewind') {
+            // Камера стоит — не двигаем cameraX
+            // Силуэт летит к платформе
+            const t = 1 - (rs.rewindTimer / 72);
+            rs.figX = rs.deathX + (rs.targetX - rs.deathX) * t;
+            rs.figY = rs.deathY + (rs.targetY - rs.deathY) * t;
+            rs.rewindTimer -= dt;
+
+            if (rs.rewindTimer <= 0) {
+                // Переходим в 'land'
+                // Уничтожаем мины
+                for (let h of hazards) { _crushMine(h, h.x - cameraX); }
+                hazards = [];
+                screenShake = 18;
+                respawnFlash = 1;
+                particles = [];
+                rs.phase = 'land';
+                rs.landTimer = 50; // ~0.8 сек
+            }
+        }
+
+        else if (rs.phase === 'land') {
+            rs.landTimer -= dt;
+            if (rs.landTimer <= 0) {
+                // Телепортируем фигуру и запускаем движение
+                const plat = rs.platform;
+                const effSize = player.size;
+                const targetWorldX = plat.x + plat.w / 2 - effSize / 2;
+                player.x = targetWorldX - cameraX;
+                player.y = plat.y - effSize;
+                player.vy = 0;
+                player.grounded = true;
+                player.jumpsLeft = 2;
+                player.dead = false;
+                player.deathAnim = null;
+                player.shield = false;
+                player.shieldTimer = 0;
+                player.growTimer = 0;
+                player.growScale = 1;
+                player.shrinkGrace = 60;
+                player.megaGrow = false;
+                currentSpeed = rs.speedAtDeath * LIVES_SLOW_MUL;
+                livesTimeScale = 1;
+                rs.phase = 'respawning';
+                rs.slowTimer = LIVES_SLOW_DUR;
+            }
+        }
+
+        else if (rs.phase === 'respawning') {
+            rs.slowTimer -= dt;
+            if (rs.slowTimer <= 0) {
+                respawnState = null;
+            } else {
+                const t = 1 - (rs.slowTimer / LIVES_SLOW_DUR);
+                const minSpd = rs.speedAtDeath * LIVES_SLOW_MUL;
+                currentSpeed = minSpd + (rs.speedAtDeath - minSpd) * t;
+            }
         }
     }
-    // Плавный возврат скорости после возрождения
-    if (respawnState && respawnState.phase === 'respawning') {
-        respawnState.slowTimer -= dt;
-        if (respawnState.slowTimer <= 0) {
-            respawnState = null;
-        } else {
-            const t = 1 - (respawnState.slowTimer / LIVES_SLOW_DUR);
-            const minSpd = respawnState.speedAtDeath * LIVES_SLOW_MUL;
-            currentSpeed = minSpd + (respawnState.speedAtDeath - minSpd) * t;
-        }
-    }
-    
+
+
     // Затухание вспышки
     if (respawnFlash > 0) respawnFlash = Math.max(0, respawnFlash - 0.045 * dt);
 
@@ -265,24 +321,23 @@ function update(dt = 1) {
         }
     }
 
-    // Частицы всегда тикают
+    const slowDt = dt * livesTimeScale;
     for (let i = particles.length - 1; i >= 0; i--) {
         const pt = particles[i];
-        pt.x += pt.vx * dt; pt.y += pt.vy * dt;
-        pt.vy += (pt.shape === 'drop' ? 0.25 : 0.18) * dt;
-        pt.life -= pt.decay * dt;
+        pt.x += pt.vx * slowDt; pt.y += pt.vy * slowDt;
+        pt.vy += (pt.shape === 'drop' ? 0.25 : 0.18) * slowDt;
+        pt.life -= pt.decay * slowDt;
         if (pt.life <= 0) particles.splice(i, 1);
     }
 
-    // Мины — фаза вращения шипов (через dt — не зависит от замедления)
-    for (let h of hazards) { h.phase += 0.04 * dt; }
+    for (let h of hazards) { h.phase += 0.04 * slowDt; }
 
     // timeScale всегда обновляем — даже после смерти, чтобы замедление плавно снималось
     _updateTimeScale(dt);
 
     // Лифты и слайды — работают всегда, включая gameover
     // effectiveDt здесь = dt * текущий timeScale (замедляется при LCD)
-    const _eDt = dt * timeScale;
+    const _eDt = dt * timeScale * livesTimeScale;
     for (let p of platforms) {
         if (p.type === 'lift') {
             const oldY = p.y;
@@ -344,7 +399,7 @@ function update(dt = 1) {
     }
 
     // Пока LCD активен — физика замедлена, всё остальное через effectiveDt
-    const effectiveDt = dt * timeScale;
+    const effectiveDt = dt * timeScale * livesTimeScale;
 
     // gameTime — игровое время, замедляется при LCD (используется в render для анимаций)
     gameTime += effectiveDt;

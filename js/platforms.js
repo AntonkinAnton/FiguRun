@@ -279,6 +279,8 @@ function resetGame() {
     respawnState = null;
     lastSafePlatform = null;
     livesInventory = _livesTestMode ? 3 : save.lives;
+    livesTimeScale = 1;
+    respawnFlash = 0;
     nextBoosterIn = 5;
     boosterRunCount = { jump: 0, speed: 0, shield: 0, grow: 0 };
     pendingFollowGrow = false;

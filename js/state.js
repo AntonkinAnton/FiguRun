@@ -127,6 +127,8 @@ let respawnState = null;
 let lastSafePlatform = null;
 let respawnFlash = 0; // 1..0, яркость вспышки
 
+let livesTimeScale = 1; // 1 = норма, ~0.15 = замедление во время decision
+
 
 // Админ-панель - Добавляешь в  main.js объект window.admin:
 // javascriptwindow.admin = {

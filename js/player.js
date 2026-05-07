@@ -47,18 +47,7 @@ function triggerDeathAnim(x, y) {
     lcdActive = false;
     player.deathAnim = { type, t: 0, x, y, done: false };
 
-            if (livesInventory > 0 && respawnState === null) {
-        const plat = _findRespawnPlatform();
-        if (plat) {
-            respawnState = {
-                phase: 'decision',
-                timer: LIVES_DECISION_SEC * 60,
-                platform: plat,
-                speedAtDeath: currentSpeed,
-                slowTimer: 0,
-                fadeIn: 0,
-            };
-            // showGameOver не вызываем — ждём решения игрока
+
 
     const c = currentPlayerColor;
     if (type === 'explode') {
@@ -93,10 +82,24 @@ function triggerDeathAnim(x, y) {
         }
     }
 
-
+    if (livesInventory > 0 && respawnState === null) {
+        const plat = _findRespawnPlatform();
+        if (plat) {
+            respawnState = {
+                phase: 'decision',
+                timer: LIVES_DECISION_SEC * 60,
+                platform: plat,
+                speedAtDeath: currentSpeed,
+                slowTimer: 0,
+                fadeIn: 0,
+                deathX: x,
+                deathY: y,
+            };
             return;
         }
     }
+
+
 
     showGameOver();
 }
