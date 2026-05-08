@@ -109,7 +109,7 @@ let timeScale = 1;
 let lcdActive = false;
 let lcdChecked = false;
 let lcdSlowTarget = 0.12; // динамический target замедления, пересчитывается в activateLCD
-let _lcdTestMode = false;
+let _lcdTestMode = true;
 
 // Точки рисуемой линии (экранные координаты)
 let drawPoints = [];
@@ -128,6 +128,7 @@ let lastSafePlatform = null;
 let respawnFlash = 0; // 1..0, яркость вспышки
 
 let livesTimeScale = 1; // 1 = норма, ~0.15 = замедление во время decision
+let cameraSnapTarget = null; // { x, speed } — плавный сдвиг камеры
 
 
 // Админ-панель - Добавляешь в  main.js объект window.admin:

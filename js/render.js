@@ -595,40 +595,12 @@ function draw() {
     // Закрываем сотрясение экрана
     if (screenShake > 0) ctx.restore();
 
-    // ── ЖИЗНИ: силуэт в фазе rewind ─────────────────────────
-    if (respawnState && respawnState.phase === 'rewind') {
-        const rs = respawnState;
-        const s = player.size;
-        const progress = 1 - (rs.rewindTimer / 72);
-
-        // Trail — несколько копий позади
-        for (let i = 0; i < 5; i++) {
-            const tp = Math.max(0, progress - i * 0.06);
-            const tx = rs.deathX + (rs.targetX - rs.deathX) * tp;
-            const ty = rs.deathY + (rs.targetY - rs.deathY) * tp;
-            ctx.save();
-            ctx.globalAlpha = (0.35 - i * 0.06) * (1 - i * 0.15);
-            ctx.translate(tx, ty);
-            ctx.fillStyle = currentPlayerColor;
-            _drawShape(s * (0.7 + i * 0.05));
-            ctx.restore();
-        }
-
-        // Основной силуэт
-        ctx.save();
-        ctx.globalAlpha = 0.92;
-        ctx.translate(rs.figX, rs.figY);
-        ctx.fillStyle = currentPlayerColor;
-        ctx.shadowColor = '#fff';
-        ctx.shadowBlur = 18;
-        _drawShape(s);
-        ctx.restore();
-    }
+    // силуэт убран — частицы сами летят к платформе
 
     // ── ЖИЗНИ: вспышка возрождения ───────────────────────────
     if (respawnFlash > 0) {
         ctx.save();
-        ctx.globalAlpha = respawnFlash;
+        ctx.globalAlpha = Math.min(1, respawnFlash);
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, W, H);
         ctx.restore();

@@ -82,7 +82,7 @@ function triggerDeathAnim(x, y) {
         }
     }
 
-    if (livesInventory > 0 && respawnState === null) {
+    if (livesInventory > 0 && (respawnState === null || respawnState.phase === 'respawning')) {
         const plat = _findRespawnPlatform();
         if (plat) {
             respawnState = {

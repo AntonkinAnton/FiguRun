@@ -76,6 +76,7 @@ const LCD_LERP_OUT       = 0.06;
 const LIVES_DECISION_SEC = 5;
 const LIVES_SLOW_DUR     = 300;
 const LIVES_SLOW_MUL     = 0.5;
+const LIVES_RESUME_SPEED = 0.005; // скорость возврата livesTimeScale к 1 после респавна
 
 function buildMedals(){
     const f=[
