@@ -163,10 +163,12 @@ function _doRespawn() {
     const rs = respawnState;
     const plat = rs.platform;
 
-    // Списываем жизнь
-    livesInventory--;
-    if (!_livesTestMode) { save.lives = livesInventory; saveSave(); }
-    updateLivesHud();
+    // Списываем жизнь только если она была (не реклама)
+    if (livesInventory > 0) {
+        livesInventory--;
+        if (!_livesTestMode) { save.lives = livesInventory; saveSave(); }
+        updateLivesHud();
+    }
 
     // Целевая позиция фигуры на платформе (экранные)
     const effSize = player.size;
