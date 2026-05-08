@@ -54,6 +54,13 @@ const LCD_PICKUP_CONFIG = {
     startDist: 0,     // с самого начала для тестирования
     maxPerRun: 1,
 };
+
+const LIFE_PICKUP_CONFIG = {
+    chance:    0.15,
+    startDist: 500,
+    maxPerRun: 2,
+};
+
 const DEATH_TYPES  = ['explode','dissolve','pop','melt','unravel'];
 const DEATH_TITLES = {
     explode:'💥 ВЗРЫВ!', dissolve:'✨ РАСПАЛСЯ!',

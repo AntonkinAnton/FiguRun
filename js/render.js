@@ -188,6 +188,34 @@ function draw() {
         ctx.restore();
     }
 
+    // ── LIFE PICKUP (сердечки) ───────────────────────────────
+    for (let pk of lifePickups) {
+        if (pk.collected) continue;
+        const px = pk.x - cameraX, py = pk.y;
+        if (px < -30 || px > W + 30) continue;
+        const bob = Math.sin(gameTime / 22 + pk.x) * 5;
+
+        ctx.save();
+        ctx.translate(px, py + bob);
+
+        // Круглый фон (красный)
+        ctx.shadowColor = '#e74c3c';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#8b0000';
+        ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Иконка сердца
+        ctx.font = '22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('❤️', 0, 1);
+
+        ctx.restore();
+    }
+
     // ── МИНЫ ─────────────────────────────────────────────────
     for (let h of hazards) {
         const hx = h.x - cameraX;
@@ -713,12 +741,12 @@ function draw() {
             ctx.translate(W / 2 - 85, btnY);
             ctx.scale(heartPulse, heartPulse);
             // Тень/свечение
-            ctx.shadowColor = '#e74c3c';
+            ctx.shadowColor = livesInventory > 0 ? '#e74c3c' : '#3498db';
             ctx.shadowBlur = 20;
             // Градиентный фон
             const hGrad = ctx.createRadialGradient(0, -btnR * 0.2, btnR * 0.1, 0, 0, btnR);
-            hGrad.addColorStop(0, '#ff6b6b');
-            hGrad.addColorStop(1, '#8b0000');
+            hGrad.addColorStop(0, livesInventory > 0 ? '#ff6b6b' : '#5b9bd5');
+            hGrad.addColorStop(1, livesInventory > 0 ? '#8b0000' : '#1a3a5c');
             ctx.beginPath(); ctx.arc(0, 0, btnR, 0, Math.PI * 2);
             ctx.fillStyle = hGrad; ctx.fill();
             // Ободок
@@ -734,7 +762,7 @@ function draw() {
             ctx.shadowBlur = 0;
             ctx.font = `${Math.round(btnR * 1.05)}px sans-serif`;
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText('❤️', 0, 2);
+            ctx.fillText(livesInventory > 0 ? '❤️' : '🎬', 0, 2);
             ctx.restore();
 
             // Кнопка ✖️

@@ -61,6 +61,8 @@ let allTimeCoins = save.allTimeCoins;
 let lcdInventory    = save.lcdCharges;
 let lcdPickups      = [];  // массив пикапов в мире {x, y, collected}
 let lcdPickupCount  = 0;   // счётчик за ран
+let lifePickups     = [];
+let lifePickupCount = 0;
 
 // Ghost-trail буферы
 let trailBuf = [];
@@ -116,8 +118,9 @@ let drawPoints = [];
 let isDrawing = false;
 
 // ── ЖИЗНИ ──────────────────────────────
-let _livesTestMode = true;
-let livesInventory = 3;
+let _livesTestMode = false; // true = всегда 3 жизни при старте, false = из save
+let livesInventory = _livesTestMode ? 3 : (save.lives || 0);
+let adUsedThisRun   = false;
 
 // Состояние механики возрождения
 // phase: null | 'decision' | 'respawning'

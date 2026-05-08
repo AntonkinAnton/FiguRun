@@ -183,6 +183,21 @@ function generateNextPlatform() {
     trySpawnHazardsInGap(last.x + last.w, newX, last.y, newY, type === 'slide' || last.type === 'slide');
     lastPlatformEnd = newX + width;
 
+    // ── LIFE PICKUP (сердце) ──────────────────────────────────
+    if (score >= LIFE_PICKUP_CONFIG.startDist &&
+        lifePickupCount < LIFE_PICKUP_CONFIG.maxPerRun &&
+        Math.random() < LIFE_PICKUP_CONFIG.chance) {
+        const gapW = newX - (last.x + last.w);
+        if (gapW > 80) {
+            const px = last.x + last.w + gapW * (0.3 + Math.random() * 0.4);
+            const py = Math.min(last.y, newY) - 220 - Math.random() * 60;
+            if (py > 200) {
+                lifePickups.push({ x: px, y: py, collected: false });
+                lifePickupCount++;
+            }
+        }
+    }
+
     // ── LCD PICKUP (карандаш) ─────────────────────────────────
     // Появляется в промежутке между платформами, высоко — сложно достать
     if (score >= LCD_PICKUP_CONFIG.startDist &&
@@ -265,6 +280,8 @@ function resetGame() {
     particles = []; hazards = []; freeCoins = [];
     lcdInventory = save.lcdCharges;
     lcdPickups = []; lcdPickupCount = 0;
+    lifePickups = []; lifePickupCount = 0;
+    adUsedThisRun = false;
     trailBuf = []; speedTrailBuf = [];
     screenShake = 0;
     gameTime = 0;

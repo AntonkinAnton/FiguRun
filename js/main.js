@@ -21,6 +21,7 @@ resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 drawCoinIcon();
 updateLcdHud();
+updateLivesHud();
 updateCoinsHud();
 
 // Разлёт платформы на куски при megaGrow
@@ -221,6 +222,13 @@ function _doRespawn() {
     };
 }
 
+function _showRewardedAd(onSuccess) {
+    // Заглушка — сразу вызываем успех
+    console.log('[AD] rewarded video placeholder');
+    adUsedThisRun = true;
+    onSuccess();
+}
+
 function _triggerGameOverFade() {
     respawnFadeOut = 1;
     livesTimeScale = 1;
@@ -375,11 +383,11 @@ function update(dt = 1) {
     // Затухание вспышки
     if (respawnFlash > 0) respawnFlash = Math.max(0, respawnFlash - 0.028 * dt);
 
-        // Плавный выход из ч/б к геймоверу
+    // Плавный выход из ч/б к геймоверу
     if (respawnFadeOut > 0) {
- 
+
         respawnFadeOut = Math.max(0, respawnFadeOut - 0.04 * dt); // ~25 кадров = ~0.4 сек
-        
+
     }
 
     // (camera lerp убран)
@@ -687,6 +695,21 @@ function update(dt = 1) {
     }
     lcdPickups = lcdPickups.filter(p => !p.collected && (p.x - cameraX) > -80);
 
+    // ── LIFE PICKUP — сбор сердечек ──────────────────────────
+    for (let p of lifePickups) {
+        if (p.collected) continue;
+        const px = p.x - cameraX, py = p.y;
+        if (figLeft + effSize > px - 18 && figLeft < px + 18 && player.y < py + 18 && player.y + effSize > py - 18) {
+            p.collected = true;
+            livesInventory++;
+            spawnParticles(px, py, '#e74c3c', 10, { spd: 1.2, size: 6 });
+            showMedal('❤️ +1 жизнь!');
+            updateLivesHud();
+            if (!_livesTestMode) { save.lives = livesInventory; saveSave(); }
+        }
+    }
+    lifePickups = lifePickups.filter(p => !p.collected && (p.x - cameraX) > -80);
+
     if (player.y > H + 80) { lastDeathCause = 'fall'; triggerDeathAnim(player.x + player.size / 2, H - 50); return; }
 
     checkMedals();
@@ -766,7 +789,14 @@ function _checkSkipBtn(e) {
 canvas.addEventListener('mousedown', e => {
     if (respawnState && respawnState.phase === 'decision') {
         const btn = _checkRespawnBtns(e);
-        if (btn === 'heart') { _doRespawn(); return; }
+        if (btn === 'heart') {
+            if (livesInventory > 0) {
+                _doRespawn();
+            } else {
+                _showRewardedAd(() => { _doRespawn(); });
+            }
+            return;
+        }
         if (btn === 'cross') { respawnState = null; _triggerGameOverFade(); return; }
         return;
     }
@@ -872,7 +902,14 @@ canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     if (respawnState && respawnState.phase === 'decision') {
         const btn = _checkRespawnBtns(e);
-        if (btn === 'heart') { _doRespawn(); return; }
+        if (btn === 'heart') {
+            if (livesInventory > 0) {
+                _doRespawn();
+            } else {
+                _showRewardedAd(() => { _doRespawn(); });
+            }
+            return;
+        }
         if (btn === 'cross') { respawnState = null; showGameOver(); return; }
         return;
     }
