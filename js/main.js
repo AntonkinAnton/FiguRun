@@ -221,6 +221,12 @@ function _doRespawn() {
     };
 }
 
+function _triggerGameOverFade() {
+    respawnFadeOut = 1;
+    livesTimeScale = 1;
+    showGameOver();
+}
+
 // ── LAST CHANCE DRAW: деактивация (линия нарисована или отменена) ─
 function cancelLCD() {
     lcdActive = false;
@@ -254,10 +260,9 @@ function update(dt = 1) {
             rs.fadeIn = Math.min(1, rs.fadeIn + 0.018 * dt);
             rs.timer -= dt;
             if (rs.timer <= 0) {
-                livesTimeScale = 1;
                 cameraSnapTarget = null;
                 respawnState = null;
-                showGameOver();
+                _triggerGameOverFade();
             }
         }
 
@@ -369,6 +374,13 @@ function update(dt = 1) {
 
     // Затухание вспышки
     if (respawnFlash > 0) respawnFlash = Math.max(0, respawnFlash - 0.028 * dt);
+
+        // Плавный выход из ч/б к геймоверу
+    if (respawnFadeOut > 0) {
+ 
+        respawnFadeOut = Math.max(0, respawnFadeOut - 0.04 * dt); // ~25 кадров = ~0.4 сек
+        
+    }
 
     // (camera lerp убран)
 
@@ -738,8 +750,8 @@ function _eventToCanvas(e) {
 function _checkRespawnBtns(e) {
     if (!respawnState || respawnState.phase !== 'decision') return null;
     const p = _eventToCanvas(e);
-    const btnY = H * 0.66, btnR = 44;
-    const heartX = W / 2 - 80, crossX = W / 2 + 80;
+    const btnY = H * 0.66, btnR = 48;
+    const heartX = W / 2 - 85, crossX = W / 2 + 85;
     if (Math.hypot(p.x - heartX, p.y - btnY) <= btnR) return 'heart';
     if (Math.hypot(p.x - crossX, p.y - btnY) <= btnR) return 'cross';
     return null;
@@ -755,7 +767,7 @@ canvas.addEventListener('mousedown', e => {
     if (respawnState && respawnState.phase === 'decision') {
         const btn = _checkRespawnBtns(e);
         if (btn === 'heart') { _doRespawn(); return; }
-        if (btn === 'cross') { respawnState = null; livesTimeScale = 1; showGameOver(); return; }
+        if (btn === 'cross') { respawnState = null; _triggerGameOverFade(); return; }
         return;
     }
     if (lcdActive) {

@@ -607,10 +607,12 @@ function draw() {
     }
 
     // ── ЖИЗНИ: экран решения ─────────────────────────────────
-    if (respawnState && respawnState.phase === 'decision') {
-        const rs = respawnState;
-        const progress = rs.timer / (LIVES_DECISION_SEC * 60);
-        const f = rs.fadeIn; // 0..1, нарастает в update
+    const _decisionActive = respawnState?.phase === 'decision';
+    const _decisionF = _decisionActive ? respawnState.fadeIn : respawnFadeOut;
+    if (_decisionActive || respawnFadeOut > 0) {
+        const rs = _decisionActive ? respawnState : null;
+        const progress = rs ? rs.timer / (LIVES_DECISION_SEC * 60) : 0;
+        const f = _decisionF;
 
         // Ч/б фильтр — плавно нарастает
         ctx.save();
@@ -626,68 +628,139 @@ function draw() {
         ctx.fillRect(0, 0, W, H);
         ctx.restore();
 
-        // Пульсирующий текст (как "РИСУЙ ПЛАТФОРМУ!")
-        const t = performance.now() / 1000;
-        const scale = 1 + Math.sin(t * 6) * 0.10;
-        const alpha = (0.85 + Math.sin(t * 4) * 0.15) * f;
-        const text = 'ПРОДОЛЖИТЬ?';
-        const fontSize = Math.round(W * 0.072);
+        // UI кнопок/таймера — только во время активного decision
+        if (rs) {
+            const t = performance.now() / 1000;
+            const scale = 1 + Math.sin(t * 6) * 0.10;
+            const alpha = (0.85 + Math.sin(t * 4) * 0.15) * f;
+            const text = 'ПРОДОЛЖИТЬ?';
+            const fontSize = Math.round(W * 0.072);
 
-        ctx.save();
-        ctx.font = `bold ${fontSize}px sans-serif`;
-        const textWidth = ctx.measureText(text).width;
-        ctx.translate(W / 2, H * 0.34);
-        ctx.scale(scale, scale);
-        ctx.globalAlpha = alpha;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.shadowColor = '#ff4444';
-        ctx.shadowBlur = 18;
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = 'rgba(200,0,0,0.5)';
-        ctx.strokeText(text, 0, 0);
-        ctx.fillStyle = '#fff';
-        ctx.fillText(text, 0, 0);
-        ctx.restore();
+            ctx.save();
+            ctx.font = `bold ${fontSize}px sans-serif`;
+            const textWidth = ctx.measureText(text).width;
+            ctx.translate(W / 2, H * 0.34);
+            ctx.scale(scale, scale);
+            ctx.globalAlpha = alpha;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = '#ff4444';
+            ctx.shadowBlur = 18;
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = 'rgba(200,0,0,0.5)';
+            ctx.strokeText(text, 0, 0);
+            ctx.fillStyle = '#fff';
+            ctx.fillText(text, 0, 0);
+            ctx.restore();
 
 
-        // Круг таймера
-        const cx = W / 2, cy = H * 0.50, cr = 54;
-        ctx.save();
-        // фон круга
-        ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill();
-        // дуга прогресса
-        ctx.beginPath();
-        ctx.arc(cx, cy, cr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
-        ctx.strokeStyle = progress > 0.4 ? '#f1c40f' : '#e74c3c';
-        ctx.lineWidth = 7; ctx.stroke();
-        // цифра внутри
-        ctx.fillStyle = '#fff';
-        ctx.font = `bold ${Math.round(cr * 0.72)}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(Math.ceil(rs.timer / 60), cx, cy);
-        ctx.restore();
 
-        // Кнопка ❤️ (продолжить)
-        const btnY = H * 0.66;
-        const btnR = 44;
-        // левая — сердце
-        ctx.save();
-        ctx.beginPath(); ctx.arc(W / 2 - 80, btnY, btnR, 0, Math.PI * 2);
-        ctx.fillStyle = '#c0392b'; ctx.fill();
-        ctx.font = `${Math.round(btnR * 1.1)}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('❤️', W / 2 - 80, btnY + 2);
-        ctx.restore();
+            // ── Таймер ───────────────────────────────────────────
+            const cx = W / 2, cy = H * 0.50, cr = 58;
+            const timerSec = Math.ceil(rs.timer / 60);
+            // Пульс при смене цифры — нарастает резко, затухает плавно
+            if (!rs._lastSec) rs._lastSec = timerSec;
+            if (timerSec !== rs._lastSec) { rs._secPulse = 1; rs._lastSec = timerSec; }
+            if (rs._secPulse > 0) rs._secPulse = Math.max(0, (rs._secPulse || 0) - 0.06);
+            const timerScale = 1 + (rs._secPulse || 0) * 0.28;
 
-        // правая — крест
-        ctx.save();
-        ctx.beginPath(); ctx.arc(W / 2 + 80, btnY, btnR, 0, Math.PI * 2);
-        ctx.fillStyle = '#555'; ctx.fill();
-        ctx.font = `${Math.round(btnR * 1.1)}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('✖️', W / 2 + 80, btnY + 2);
-        ctx.restore();
+            ctx.save();
+            // Внешнее свечение
+            ctx.shadowColor = progress > 0.4 ? '#f1c40f' : '#e74c3c';
+            ctx.shadowBlur = 22;
+            // Фон круга
+            ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fill();
+            // Ободок
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.stroke();
+            ctx.shadowBlur = 0;
+            // Дуга прогресса — толстая
+            ctx.beginPath();
+            ctx.arc(cx, cy, cr - 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+            ctx.strokeStyle = progress > 0.4 ? '#f1c40f' : '#e74c3c';
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'round';
+            ctx.shadowColor = progress > 0.4 ? '#f1c40f' : '#e74c3c';
+            ctx.shadowBlur = 14;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            // Цифра — пульсирует при смене
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(timerScale, timerScale);
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold ${Math.round(cr * 0.78)}px sans-serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 8;
+            ctx.fillText(timerSec, 0, 0);
+            ctx.restore();
+            ctx.restore();
+
+            // ── Кнопки ───────────────────────────────────────────
+            const btnY = H * 0.66;
+            const btnR = 48;
+            const t2 = performance.now() / 1000;
+
+            // Пульс кнопок — каждая в своей фазе
+            const heartPulse = 1 + Math.sin(t2 * 2.2) * 0.07;
+            const crossPulse = 1 + Math.sin(t2 * 2.2 + Math.PI) * 0.07;
+
+            // Кнопка ❤️
+            ctx.save();
+            ctx.translate(W / 2 - 85, btnY);
+            ctx.scale(heartPulse, heartPulse);
+            // Тень/свечение
+            ctx.shadowColor = '#e74c3c';
+            ctx.shadowBlur = 20;
+            // Градиентный фон
+            const hGrad = ctx.createRadialGradient(0, -btnR * 0.2, btnR * 0.1, 0, 0, btnR);
+            hGrad.addColorStop(0, '#ff6b6b');
+            hGrad.addColorStop(1, '#8b0000');
+            ctx.beginPath(); ctx.arc(0, 0, btnR, 0, Math.PI * 2);
+            ctx.fillStyle = hGrad; ctx.fill();
+            // Ободок
+            ctx.strokeStyle = 'rgba(255,150,150,0.7)';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(0, 0, btnR, 0, Math.PI * 2); ctx.stroke();
+            // Блик сверху
+            ctx.save();
+            ctx.globalAlpha = 0.25;
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.ellipse(0, -btnR * 0.35, btnR * 0.5, btnR * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            ctx.shadowBlur = 0;
+            ctx.font = `${Math.round(btnR * 1.05)}px sans-serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('❤️', 0, 2);
+            ctx.restore();
+
+            // Кнопка ✖️
+            ctx.save();
+            ctx.translate(W / 2 + 85, btnY);
+            ctx.scale(crossPulse, crossPulse);
+            ctx.shadowColor = '#555';
+            ctx.shadowBlur = 16;
+            const cGrad = ctx.createRadialGradient(0, -btnR * 0.2, btnR * 0.1, 0, 0, btnR);
+            cGrad.addColorStop(0, '#888');
+            cGrad.addColorStop(1, '#222');
+            ctx.beginPath(); ctx.arc(0, 0, btnR, 0, Math.PI * 2);
+            ctx.fillStyle = cGrad; ctx.fill();
+            ctx.strokeStyle = 'rgba(200,200,200,0.4)';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(0, 0, btnR, 0, Math.PI * 2); ctx.stroke();
+            ctx.save();
+            ctx.globalAlpha = 0.2;
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.ellipse(0, -btnR * 0.35, btnR * 0.5, btnR * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            ctx.shadowBlur = 0;
+            ctx.font = `${Math.round(btnR * 1.05)}px sans-serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('✖️', 0, 2);
+            ctx.restore();
+        }
     }
 }
